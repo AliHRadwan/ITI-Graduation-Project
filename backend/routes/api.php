@@ -41,3 +41,13 @@ Route::middleware('auth:sanctum')->post('/logout', function (Request $request) {
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });
+
+// ========================================
+// Load modular route files
+// ========================================
+
+require __DIR__ . '/api/rooms.php';
+require __DIR__ . '/api/departments.php';
+require __DIR__ . '/api/channels.php';
+require __DIR__ . '/api/qr-tokens.php';
+require __DIR__ . '/api/proactive-rules.php';
