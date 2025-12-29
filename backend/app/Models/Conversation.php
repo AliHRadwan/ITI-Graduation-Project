@@ -6,6 +6,9 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use App\Models\GuestIdentity;
+use App\Models\Message;
+use App\Models\Room;
 
 class Conversation extends Model
 {
@@ -39,9 +42,8 @@ class Conversation extends Model
         return $this->hasMany(Message::class, 'conversation_id');
     }
 
-    // لو عندك Room Model
-    // public function room(): BelongsTo
-    // {
-    //     return $this->belongsTo(Room::class, 'room_id');
-    // }
+    public function room(): BelongsTo
+    {
+        return $this->belongsTo(Room::class, 'room_id');
+    }
 }
