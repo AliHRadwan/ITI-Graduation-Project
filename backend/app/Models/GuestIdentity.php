@@ -5,10 +5,11 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class GuestIdentity extends Model
 {
-    use HasUuids;
+    use HasFactory, HasUuids;
 
     protected $table = 'guest_identities';
     public $incrementing = false;
