@@ -21,14 +21,6 @@ class Ticket extends Model
         "description",
     ];
 
-    protected function casts(): array
-    {
-        return [
-            'created_at' => 'datetime',
-            'updated_at' => 'datetime',
-        ];
-    }
-
     public function room()
     {
         return $this->belongsTo(Room::class);
