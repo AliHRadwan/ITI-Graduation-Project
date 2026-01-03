@@ -17,7 +17,15 @@ class SlaPolicyFactory extends Factory
     public function definition(): array
     {
         return [
-            //
+            'department_id' => \App\Models\Department::factory(),
+            'first_response_minutes' => $this->faker->numberBetween(15, 60),
+            'resolution_minutes' => $this->faker->numberBetween(1440, 2160),
+            'quiet_hours' => json_encode([
+                'start' => '09:00',
+                'end' => '18:00',
+                'days' => ['Friday', 'Saturday'],
+            ]),
+            'is_active' => $this->faker->boolean(80),
         ];
     }
 }

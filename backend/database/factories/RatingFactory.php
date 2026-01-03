@@ -17,7 +17,9 @@ class RatingFactory extends Factory
     public function definition(): array
     {
         return [
-            //
+            'ticket_id' => \App\Models\Ticket::factory(),
+            'stars' => $this->faker->numberBetween(1, 5),
+            'comment' => $this->faker->optional()->sentence(),
         ];
     }
 }

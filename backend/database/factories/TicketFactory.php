@@ -17,7 +17,13 @@ class TicketFactory extends Factory
     public function definition(): array
     {
         return [
-            //
+            'department_id' => \App\Models\Department::factory(),
+            'room_id' => \App\Models\Room::factory(),
+            'conversation_id' => \App\Models\Conversation::factory(),
+            'category' => $this->faker->word(),
+            'status' => fake()->randomElement(['new', 'doing', 'done', 'canceled']),
+            'priority' => fake()->randomElement(['low', 'med', 'high', 'urgent']),
+            'description' => $this->faker->paragraph(),
         ];
     }
 }

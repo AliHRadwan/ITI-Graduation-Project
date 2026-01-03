@@ -17,7 +17,13 @@ class NotificationLogFactory extends Factory
     public function definition(): array
     {
         return [
-            //
+            'ticket_id' => \App\Models\Ticket::factory(),
+            'conversation_id' => \App\Models\Conversation::factory(),
+            'channel_type' => $this->faker->randomElement(['web', 'telegram', 'whatsapp']),
+            'message_type' => $this->faker->randomElement(['confirm', 'eta', 'delay', 'status', 'rating']),
+            'payload' => $this->faker->text(200),
+            'sent_at' => $this->faker->dateTimeBetween('now', '+1 day'),
+            'status' => $this->faker->randomElement(['sent', 'failed']),
         ];
     }
 }
