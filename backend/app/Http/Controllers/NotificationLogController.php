@@ -10,10 +10,10 @@ class NotificationLogController extends Controller
     public function createLog(Request $request)
     {
         $validated = $request->validate([
-            'ticket_id' => 'required|integer|exists:tickets,id',
-            'conversation_id' => 'nullable|integer|exists:conversations,id',
+            'ticket_id' => 'required|uuid|exists:tickets,id',
+            'conversation_id' => 'nullable|uuid|exists:conversations,id',
             'channel_type' => 'required|string',
-            'message_type' => 'required|string',
+            'message_type' => 'required|enum:confirm,eta,delay,status,rating',
             'payload' => 'required|text',
             'sent_at' => 'nullable|date',
             'status' => 'required|string',

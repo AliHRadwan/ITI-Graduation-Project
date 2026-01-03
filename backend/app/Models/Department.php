@@ -38,4 +38,9 @@ class Department extends Model
     {
         return $this->hasOne(SlaPolicy::class);
     }
+
+    public function routingRules()
+    {
+        return $this->hasMany(RoutingRule::class);
+    }
 }

@@ -17,13 +17,13 @@ class TicketController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'room_id' => 'required|uuid',
-            'department_id' => 'required|uuid',
-            'conversation_id' => 'required|uuid',
+            'room_id' => 'required|uuid|exists:rooms,id',
+            'department_id' => 'required|uuid|exists:departments,id',
+            'conversation_id' => 'required|uuid|exists:conversations,id',
             'category' => 'required|string|max:255',
-            'status' => 'required|string|max:50',
-            'priority' => 'required|string|max:50',
-            'description' => 'required|string',
+            'status' => 'required|enum:new,doing,done,canceled',
+            'priority' => 'required|enum:low,med,high,urgent',
+            'description' => 'nullable|text|max:500',
         ]);
 
         Ticket::create($validated);

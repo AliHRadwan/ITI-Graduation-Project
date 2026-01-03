@@ -16,11 +16,11 @@ class SlaController extends Controller
     public function createPolicy(Request $request)
     {
         $validated = $request->validate([
-            'department_id' => 'required|exists:departments,id',
-            'first_response_minutes' => 'required|integer|min:0',
-            'resolution_minutes' => 'required|integer|min:0',
-            'quiet_hours' => 'nullable|array',
-            'is_active' => 'boolean',
+            'department_id' => 'required|uuid|exists:departments,id',
+            'first_response_minutes' => 'required|integer|min:10',
+            'resolution_minutes' => 'required|integer|min:10',
+            'quiet_hours' => 'sometimes|array',
+            'is_active' => 'sometimes|boolean',
         ]);
 
         $policy = SlaPolicy::create($validated);
@@ -33,15 +33,15 @@ class SlaController extends Controller
     public function updatePolicy(Request $request, SlaPolicy $policy)
     {
         $validated = $request->validate([
-            'department_id' => 'sometimes|exists:departments,id',
-            'first_response_minutes' => 'sometimes|integer|min:0',
-            'resolution_minutes' => 'sometimes|integer|min:0',
+            'department_id' => 'sometimes|uuid|exists:departments,id',
+            'first_response_minutes' => 'sometimes|integer|min:10',
+            'resolution_minutes' => 'sometimes|integer|min:10',
             'quiet_hours' => 'sometimes|array',
             'is_active' => 'sometimes|boolean',
         ]);
 
         $policy->update($validated);
-        return response()->json('Policy updated successfully: ' . $policy, 200);
+        return response()->json(['message' => 'Policy updated successfully', 'data' => $policy], 200);
     }
 
     public function deactivatePolicy(SlaPolicy $policy)

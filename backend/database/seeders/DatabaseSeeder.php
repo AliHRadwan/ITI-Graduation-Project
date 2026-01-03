@@ -28,6 +28,8 @@ class DatabaseSeeder extends Seeder
             RatingSeeder::class,
             TicketSeeder::class,
             TicketEventSeeder::class,
+            RoutingRuleSeeder::class,
+            StaffRoleSeeder::class,
         ]);
     }
 }
