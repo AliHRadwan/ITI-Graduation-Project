@@ -16,14 +16,14 @@ return new class extends Migration
             $table->uuid('ticket_id')->nullable();
             $table->uuid('actor_staff_user_id')->nullable();
             $table->enum('event_type', [
+                'note',
                 'created',
-                'status_changed',
-                'note_added',
                 'merged',
                 'escalated',
                 'closed',
                 'reopened',
                 'assigned',
+                'status_changed',
                 'priority_changed',
             ])->nullable();
             $table->text('note')->nullable();

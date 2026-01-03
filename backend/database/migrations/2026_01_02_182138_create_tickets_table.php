@@ -16,9 +16,10 @@ return new class extends Migration
             $table->uuid('room_id')->nullable();
             $table->uuid('department_id')->nullable();
             $table->uuid('conversation_id')->nullable();
+            $table->uuid('actor_staff_user_id')->nullable();
             $table->string('category')->nullable();
-            $table->enum('status', ['New', 'Doing', 'Done', 'Cancelled'])->default('New');
-            $table->enum('priority', ['Low', 'Medium', 'High', 'Urgent'])->default('Medium');
+            $table->enum('status', ['new', 'doing', 'done', 'cancelled'])->default('new');
+            $table->enum('priority', ['low', 'med', 'high', 'urgent'])->default('med');
             $table->text('description')->nullable();
             $table->timestamps();
 
