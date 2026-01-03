@@ -23,31 +23,55 @@ class Ticket extends Model
 
     public function room()
     {
-        return $this->belongsTo(Room::class, 'room_id');
+        return $this->belongsTo(Room::class);
     }
 
     public function department()
     {
-        return $this->belongsTo(Department::class, 'department_id');
+        return $this->belongsTo(Department::class);
     }
 
     public function conversation()
     {
-        return $this->belongsTo(Conversation::class, 'conversation_id');
+        return $this->belongsTo(Conversation::class);
     }
 
     public function notificationLogs()
     {
-        return $this->hasMany(NotificationLog::class, 'ticket_id');
+        return $this->hasMany(NotificationLog::class);
     }
 
-    public function ratings()
+    public function rating()
     {
-        return $this->hasOne(Rating::class, 'ticket_id');
+        return $this->hasOne(Rating::class);
     }
 
-    public function ticketEvents()
+    public function events()
     {
-        return $this->hasMany(TicketEvent::class, 'ticket_id');
+        return $this->hasMany(TicketEvent::class);
+    }
+
+    public function checkSlaFirstResponseBreaches(?SlaPolicy $policy): bool
+    {
+        if (!$policy || !$policy->is_active) {
+            return false;
+        }
+
+        return now()->greaterThan(
+            $this->created_at->addMinutes($policy->first_response_minutes)
+        );
+    }
+
+    public function checkSlaResolutionBreaches(?SlaPolicy $policy): bool
+    {
+        // If no policy exists or it's inactive, it can't breach.
+        if (!$policy || !$policy->is_active) {
+            return false;
+        }
+
+        // Logic: Is "Now" > "Created At + Limit"?
+        return now()->greaterThan(
+            $this->created_at->addMinutes($policy->resolution_minutes)
+        );
     }
 }

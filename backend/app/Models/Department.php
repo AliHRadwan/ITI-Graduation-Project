@@ -33,4 +33,9 @@ class Department extends Model
             'updated_at' => 'datetime',
         ];
     }
+
+    public function slaPolicy()
+    {
+        return $this->hasOne(SlaPolicy::class);
+    }
 }
