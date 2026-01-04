@@ -7,7 +7,6 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-<<<<<<< HEAD
 use App\Models\GuestIdentity;
 use App\Models\Message;
 use App\Models\Room;
@@ -15,12 +14,6 @@ use App\Models\Room;
 class Conversation extends Model
 {
     use HasFactory, HasUuids;
-=======
-
-class Conversation extends Model
-{
-    use HasUuids, HasFactory;
->>>>>>> develop
 
     protected $table = 'conversations';
     public $incrementing = false;
