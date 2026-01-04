@@ -22,10 +22,16 @@ class DatabaseSeeder extends Seeder
             'email' => 'test@example.com',
         ]);
 
-        // Seed departments and channels
         $this->call([
             DepartmentSeeder::class,
             ChannelConfigSeeder::class,
+            SlaPolicySeeder::class,
+            NotificationLogSeeder::class,
+            RatingSeeder::class,
+            TicketSeeder::class,
+            TicketEventSeeder::class,
+            RoutingRuleSeeder::class,
+            StaffRoleSeeder::class,
         ]);
     }
 }
