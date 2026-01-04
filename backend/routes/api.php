@@ -1,6 +1,5 @@
 <?php
 
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
 use App\Models\User;
@@ -38,10 +37,16 @@ Route::post('/messages/{message}/attachments', [AttachmentController::class, 'at
 // });
 
 //=================================================================================================
+
+use App\Http\Controllers\TicketController;
+use App\Http\Controllers\SlaController;
+use App\Http\Controllers\NotificationLogController;
+use App\Http\Controllers\RoutingRuleController;
 use App\Http\Controllers\Api\StaffUserController;
 use App\Http\Controllers\Api\StaffRoleController;
 use App\Http\Controllers\Api\StaffMembershipController;
 use App\Http\Controllers\Api\LoginController;
+
 
 
 Route::post('/auth/login', [LoginController::class, 'login'])->middleware('throttle:10,1');
@@ -75,9 +80,45 @@ Route::prefix('staff/roles')->middleware(['auth:sanctum', 'admin'])->group(funct
 });
 
 Route::prefix('staff/memberships')->middleware(['auth:sanctum', 'manager.or.admin'])->group(function () {
-
     Route::get('/', [StaffMembershipController::class, 'index']);
     Route::post('/', [StaffMembershipController::class, 'store']);
     Route::patch('{id}', [StaffMembershipController::class, 'update']);
     Route::delete('{id}', [StaffMembershipController::class, 'destroy']);
+});
+
+Route::prefix('tickets')->middleware('auth:sanctum')->group(function () {
+    Route::get('/', [TicketController::class, 'getTickets']);
+    Route::post('/', [TicketController::class, 'store']);
+    Route::get('{ticket}', [TicketController::class, 'show']);
+    Route::patch('{ticket}', [TicketController::class, 'update']);
+    Route::post('{ticket}/status', [TicketController::class, 'updateStatus']);
+    Route::post('{ticket}/assign', [TicketController::class, 'assignStaff']);
+    Route::post('{ticket}/notes', [TicketController::class, 'addNote']);
+    Route::post('{ticket}/escalate', [TicketController::class, 'escalate']);
+    Route::get('{ticket}/events', [TicketController::class, 'getEvents']);
+    Route::post('{ticket}/rating', [TicketController::class, 'rateTicket']);
+    Route::get('{ticket}/rating', [TicketController::class, 'getRating']);
+});
+
+Route::prefix('sla/policies')->middleware('auth:sanctum')->group(function () {
+    Route::get('/', [SlaController::class, 'getPolicies']);
+    Route::post('/', [SlaController::class, 'createPolicy']);
+    Route::patch('{policy}', [SlaController::class, 'updatePolicy']);
+    Route::post('{policy}/deactivate', [SlaController::class, 'deactivatePolicy']);
+});
+Route::middleware('auth:sanctum')->get('/sla/breaches', [SlaController::class, 'getBreaches']);
+
+Route::prefix('notifications')->middleware('auth:sanctum')->group(function () {
+    Route::post('/log', [NotificationLogController::class, 'createLog']);
+    Route::get('/logs', [NotificationLogController::class, 'getLogs']);
+    Route::post('/logs/{notificationLog}/mark-failed', [NotificationLogController::class, 'markFailed']);
+    Route::post('/logs/{notificationLog}/mark-sent', [NotificationLogController::class, 'markSent']);
+});
+
+
+Route::prefix('routing-rules')->middleware('auth:sanctum')->group(function () {
+    Route::get('/', [RoutingRuleController::class, 'getRules']);
+    Route::post('/', [RoutingRuleController::class, 'create']);
+    Route::patch('{routingRule}', [RoutingRuleController::class, 'update']);
+    Route::post('{routingRule}/deactivate', [RoutingRuleController::class, 'deactivate']);
 });

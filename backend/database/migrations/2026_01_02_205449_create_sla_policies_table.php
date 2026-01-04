@@ -11,17 +11,16 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('staff_memberships', function (Blueprint $table) {
+        Schema::create('sla_policies', function (Blueprint $table) {
             $table->uuid('id')->primary();
-            $table->uuid('staff_user_id');
-            $table->uuid('department_id');
-            $table->uuid('staff_role_id');
+            $table->uuid('department_id')->nullable();
+            $table->integer('first_response_minutes')->default(60);
+            $table->integer('resolution_minutes')->default(1440);
+            $table->json('quiet_hours')->nullable();
+            $table->boolean('is_active')->default(true);
             $table->timestamps();
-            $table->unique(['staff_user_id', 'department_id']);
 
-            $table->foreign('staff_user_id')->references('id')->on('staff_users')->cascadeOnDelete();
             $table->foreign('department_id')->references('id')->on('departments')->cascadeOnDelete();
-            $table->foreign('staff_role_id')->references('id')->on('staff_roles');
         });
     }
 
@@ -30,6 +29,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('staff_memberships');
+        Schema::dropIfExists('sla_policies');
     }
 };

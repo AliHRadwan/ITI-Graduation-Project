@@ -11,11 +11,11 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('staff_users', function (Blueprint $table) {
+        Schema::create('routing_rules', function (Blueprint $table) {
             $table->uuid('id')->primary();
-            $table->string('name');
-            $table->string('email')->unique();
-            $table->string('password');
+            $table->uuid('department_id');
+            $table->string('match_category');
+            $table->enum('priority_default', ['low', 'med', 'high', 'urgent']);
             $table->boolean('is_active')->default(true);
             $table->timestamps();
         });
@@ -26,6 +26,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('staff_users');
+        Schema::dropIfExists('routing_rules');
     }
 };
