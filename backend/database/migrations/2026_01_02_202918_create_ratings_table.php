@@ -11,13 +11,14 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('staff_users', function (Blueprint $table) {
+        Schema::create('ratings', function (Blueprint $table) {
             $table->uuid('id')->primary();
-            $table->string('name');
-            $table->string('email')->unique();
-            $table->string('password');
-            $table->boolean('is_active')->default(true);
+            $table->uuid('ticket_id')->nullable();
+            $table->integer('stars')->default(5);
+            $table->text('comment')->nullable();
             $table->timestamps();
+
+            $table->foreign('ticket_id')->references('id')->on('tickets')->cascadeOnDelete();
         });
     }
 
@@ -26,6 +27,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('staff_users');
+        Schema::dropIfExists('ratings');
     }
 };
