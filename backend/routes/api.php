@@ -43,6 +43,8 @@ Route::get('/search', [SearchController::class, 'search']);
 
 });
 
+
+
 //=================================================================================================
 
 use App\Http\Controllers\TicketController;
