@@ -18,7 +18,7 @@ class RoutingRuleFactory extends Factory
     {
         return [
             'department_id' => \App\Models\Department::factory(),
-            'match_category' => $this->faker->randomElement(['hardware', 'software', 'network', 'other']),
+            'match_category' => $this->faker->randomElement(['general_inquiry','maintenance', 'housekeeping', 'emergency', 'complaint', 'other']),
             'priority_default' => $this->faker->randomElement(['low', 'med', 'high', 'urgent']),
             'is_active' => $this->faker->boolean(80),
         ];

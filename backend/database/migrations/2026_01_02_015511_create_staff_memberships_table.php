@@ -12,13 +12,16 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('staff_memberships', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('staff_user_id')->constrained('staff_users')->cascadeOnDelete();
+            $table->uuid('id')->primary();
+            $table->uuid('staff_user_id');
             $table->uuid('department_id');
-            $table->foreign('department_id')->references('id')->on('departments')->cascadeOnDelete();
-            $table->foreignId('staff_role_id')->constrained('staff_roles');
+            $table->uuid('staff_role_id');
             $table->timestamps();
             $table->unique(['staff_user_id', 'department_id']);
+
+            $table->foreign('staff_user_id')->references('id')->on('staff_users')->cascadeOnDelete();
+            $table->foreign('department_id')->references('id')->on('departments')->cascadeOnDelete();
+            $table->foreign('staff_role_id')->references('id')->on('staff_roles');
         });
     }
 

@@ -2,10 +2,9 @@
 
 namespace Database\Seeders;
 
+use App\Models\NotificationLog;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
-use Illuminate\Notifications\Notification;
-use App\Models\NotificationLog;
 
 class NotificationLogSeeder extends Seeder
 {
