@@ -8,13 +8,14 @@ use App\Http\Controllers\Api\GuestController;
 use App\Http\Controllers\Api\ConversationController;
 use App\Http\Controllers\Api\MessageController;
 use App\Http\Controllers\Api\AttachmentController;
+use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\SearchController;
 
 
 
 //==============ali gamal========================================================================
 
 Route::middleware('auth:sanctum')->group(function () {  
-    
 // 5) Guests
 Route::get('/guests', [GuestController::class, 'index']);
 Route::get('/guests/{guestIdentity}', [GuestController::class, 'show']);
@@ -33,6 +34,12 @@ Route::post('/conversations/{conversation}/messages', [MessageController::class,
 Route::post('/attachments/upload', [AttachmentController::class, 'upload']);
 Route::get('/attachments/{attachment}', [AttachmentController::class, 'show']);
 Route::post('/messages/{message}/attachments', [AttachmentController::class, 'attachToMessage']);
+
+// Dashboard & Reporting
+Route::get('/dashboard/metrics', [DashboardController::class, 'getMetrics']);
+Route::get('/dashboard/reports/tickets', [DashboardController::class, 'getTicketReports']);
+Route::get('/dashboard/reports/sla', [DashboardController::class, 'getSLAReports']);
+Route::get('/search', [SearchController::class, 'search']);
 
 });
 
@@ -122,3 +129,6 @@ Route::prefix('routing-rules')->middleware('auth:sanctum')->group(function () {
     Route::patch('{routingRule}', [RoutingRuleController::class, 'update']);
     Route::post('{routingRule}/deactivate', [RoutingRuleController::class, 'deactivate']);
 });
+
+
+
