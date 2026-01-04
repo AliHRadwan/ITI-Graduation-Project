@@ -23,6 +23,8 @@ class DatabaseSeeder extends Seeder
         ]);
 
         $this->call([
+            DepartmentSeeder::class,
+            ChannelConfigSeeder::class,
             SlaPolicySeeder::class,
             NotificationLogSeeder::class,
             RatingSeeder::class,

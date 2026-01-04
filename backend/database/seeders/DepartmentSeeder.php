@@ -2,9 +2,8 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
-use Illuminate\Database\Seeder;
 use App\Models\Department;
+use Illuminate\Database\Seeder;
 
 class DepartmentSeeder extends Seeder
 {
@@ -13,16 +12,21 @@ class DepartmentSeeder extends Seeder
      */
     public function run(): void
     {
-        //
-                $departments = [
-            'Housekeeping',
-            'Maintenance',
-            'Reception',
-            'Room Service'
+        $departments = [
+            ['name' => 'Housekeeping', 'is_active' => true],
+            ['name' => 'Maintenance', 'is_active' => true],
+            ['name' => 'Reception', 'is_active' => true],
+            ['name' => 'Room Service', 'is_active' => true],
+            ['name' => 'Concierge', 'is_active' => true],
         ];
 
-        foreach ($departments as $dept) {
-            Department::firstOrCreate(['name' => $dept]);
+        foreach ($departments as $department) {
+            Department::firstOrCreate(
+                ['name' => $department['name']],
+                ['is_active' => $department['is_active']]
+            );
         }
+
+        $this->command->info('Departments seeded successfully!');
     }
 }

@@ -43,6 +43,18 @@ Route::prefix('staff/roles')->middleware(['auth:sanctum', 'admin'])->group(funct
     Route::delete('{id}', [StaffRoleController::class, 'destroy']); // optional
 });
 
+
+// ========================================
+// Load modular route files
+// ========================================
+
+require __DIR__ . '/api/rooms.php';
+require __DIR__ . '/api/departments.php';
+require __DIR__ . '/api/channels.php';
+require __DIR__ . '/api/qr-tokens.php';
+require __DIR__ . '/api/proactive-rules.php';
+
+// ========================================
 Route::prefix('staff/memberships')->middleware(['auth:sanctum', 'manager.or.admin'])->group(function () {
     Route::get('/', [StaffMembershipController::class, 'index']);
     Route::post('/', [StaffMembershipController::class, 'store']);
