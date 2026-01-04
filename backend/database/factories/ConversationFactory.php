@@ -2,26 +2,23 @@
 
 namespace Database\Factories;
 
+use App\Models\Conversation;
+use App\Models\GuestIdentity;
+use App\Models\Room;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
-/**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\Conversation>
- */
 class ConversationFactory extends Factory
 {
-    /**
-     * Define the model's default state.
-     *
-     * @return array<string, mixed>
-     */
+    protected $model = Conversation::class;
+
     public function definition(): array
     {
         return [
-            'guest_identity_id' => \App\Models\GuestIdentity::factory(),
-            'room_id' => \App\Models\Room::factory(),
+            'guest_identity_id' => GuestIdentity::factory(),
+            'room_id' => Room::factory(),
             'status' => $this->faker->randomElement(['open', 'handoff', 'closed']),
-            'started_at' => $this->faker->dateTimeBetween('now', '+1 day'),
-            'last_seen_at' => $this->faker->dateTimeBetween('now', '+1 day'),
+            'started_at' => now()->subHours($this->faker->numberBetween(1, 72)),
+            'last_seen_at' => now()->subMinutes($this->faker->numberBetween(1, 120)),
         ];
     }
 }

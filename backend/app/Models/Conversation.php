@@ -7,10 +7,13 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Models\GuestIdentity;
+use App\Models\Message;
+use App\Models\Room;
 
 class Conversation extends Model
 {
-    use HasUuids, HasFactory;
+    use HasFactory, HasUuids;
 
     protected $table = 'conversations';
     public $incrementing = false;
@@ -40,9 +43,8 @@ class Conversation extends Model
         return $this->hasMany(Message::class, 'conversation_id');
     }
 
-    // لو عندك Room Model
-    // public function room(): BelongsTo
-    // {
-    //     return $this->belongsTo(Room::class, 'room_id');
-    // }
+    public function room(): BelongsTo
+    {
+        return $this->belongsTo(Room::class, 'room_id');
+    }
 }

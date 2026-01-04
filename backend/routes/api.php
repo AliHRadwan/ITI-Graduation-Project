@@ -1,6 +1,51 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Auth;
+use App\Models\User;
+use Illuminate\Support\Facades\Hash;
+use App\Http\Controllers\Api\GuestController;
+use App\Http\Controllers\Api\ConversationController;
+use App\Http\Controllers\Api\MessageController;
+use App\Http\Controllers\Api\AttachmentController;
+use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\SearchController;
+
+
+
+//==============ali gamal========================================================================
+
+Route::middleware('auth:sanctum')->group(function () {  
+// 5) Guests
+Route::get('/guests', [GuestController::class, 'index']);
+Route::get('/guests/{guestIdentity}', [GuestController::class, 'show']);
+
+// 5) Conversations
+Route::get('/conversations', [ConversationController::class, 'index']);
+Route::get('/conversations/{conversation}', [ConversationController::class, 'show']);
+Route::post('/conversations/{conversation}/handoff', [ConversationController::class, 'handoff']);
+Route::post('/conversations/{conversation}/close', [ConversationController::class, 'close']);
+
+// 5) Messages
+Route::get('/conversations/{conversation}/messages', [MessageController::class, 'index']);
+Route::post('/conversations/{conversation}/messages', [MessageController::class, 'store']);
+
+// 6) Attachments
+Route::post('/attachments/upload', [AttachmentController::class, 'upload']);
+Route::get('/attachments/{attachment}', [AttachmentController::class, 'show']);
+Route::post('/messages/{message}/attachments', [AttachmentController::class, 'attachToMessage']);
+
+// Dashboard & Reporting
+Route::get('/dashboard/metrics', [DashboardController::class, 'getMetrics']);
+Route::get('/dashboard/reports/tickets', [DashboardController::class, 'getTicketReports']);
+Route::get('/dashboard/reports/sla', [DashboardController::class, 'getSLAReports']);
+Route::get('/search', [SearchController::class, 'search']);
+
+});
+
+
+
+//=================================================================================================
 
 use App\Http\Controllers\TicketController;
 use App\Http\Controllers\SlaController;
