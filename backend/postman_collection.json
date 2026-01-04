@@ -1,0 +1,672 @@
+{
+	"info": {
+		"name": "Hotel Management API",
+		"description": "Complete API collection for Hotel Management System with Rooms, Departments, Channels, QR Tokens, and Proactive Rules",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:8000/api",
+			"type": "string"
+		},
+		{
+			"key": "token",
+			"value": "",
+			"type": "string"
+		}
+	],
+	"auth": {
+		"type": "bearer",
+		"bearer": [
+			{
+				"key": "token",
+				"value": "{{token}}",
+				"type": "string"
+			}
+		]
+	},
+	"item": [
+		{
+			"name": "Authentication",
+			"item": [
+				{
+					"name": "Login",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    var jsonData = pm.response.json();",
+									"    pm.collectionVariables.set(\"token\", jsonData.access_token);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"admin@hotel.com\",\n  \"password\": \"password\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/login",
+							"host": ["{{base_url}}"],
+							"path": ["login"]
+						}
+					}
+				},
+				{
+					"name": "Get User",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/user",
+							"host": ["{{base_url}}"],
+							"path": ["user"]
+						}
+					}
+				},
+				{
+					"name": "Logout",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/logout",
+							"host": ["{{base_url}}"],
+							"path": ["logout"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Rooms",
+			"item": [
+				{
+					"name": "List Rooms",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/rooms?status=available",
+							"host": ["{{base_url}}"],
+							"path": ["rooms"],
+							"query": [
+								{
+									"key": "status",
+									"value": "available",
+									"description": "Filter by status (available, occupied, maintenance, cleaning)"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Create Room",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"room_number\": \"101\",\n  \"status\": \"available\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/rooms",
+							"host": ["{{base_url}}"],
+							"path": ["rooms"]
+						}
+					}
+				},
+				{
+					"name": "Get Room",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/rooms/:id",
+							"host": ["{{base_url}}"],
+							"path": ["rooms", ":id"],
+							"variable": [
+								{
+									"key": "id",
+									"value": ""
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Update Room",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"room_number\": \"102\",\n  \"status\": \"occupied\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/rooms/:id",
+							"host": ["{{base_url}}"],
+							"path": ["rooms", ":id"],
+							"variable": [
+								{
+									"key": "id",
+									"value": ""
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Delete Room",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/rooms/:id",
+							"host": ["{{base_url}}"],
+							"path": ["rooms", ":id"],
+							"variable": [
+								{
+									"key": "id",
+									"value": ""
+								}
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Departments",
+			"item": [
+				{
+					"name": "List Departments",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/departments",
+							"host": ["{{base_url}}"],
+							"path": ["departments"]
+						}
+					}
+				},
+				{
+					"name": "Create Department",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Housekeeping\",\n  \"is_active\": true\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/departments",
+							"host": ["{{base_url}}"],
+							"path": ["departments"]
+						}
+					}
+				},
+				{
+					"name": "Get Department",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/departments/:id",
+							"host": ["{{base_url}}"],
+							"path": ["departments", ":id"],
+							"variable": [
+								{
+									"key": "id",
+									"value": ""
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Update Department",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Maintenance\",\n  \"is_active\": true\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/departments/:id",
+							"host": ["{{base_url}}"],
+							"path": ["departments", ":id"],
+							"variable": [
+								{
+									"key": "id",
+									"value": ""
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Deactivate Department",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/departments/:id/deactivate",
+							"host": ["{{base_url}}"],
+							"path": ["departments", ":id", "deactivate"],
+							"variable": [
+								{
+									"key": "id",
+									"value": ""
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Delete Department",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/departments/:id",
+							"host": ["{{base_url}}"],
+							"path": ["departments", ":id"],
+							"variable": [
+								{
+									"key": "id",
+									"value": ""
+								}
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Channels",
+			"item": [
+				{
+					"name": "List Channels",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/channels",
+							"host": ["{{base_url}}"],
+							"path": ["channels"]
+						}
+					}
+				},
+				{
+					"name": "Create Channel",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"channel_type\": \"telegram\",\n  \"external_account_id\": \"bot123456789\",\n  \"settings\": {\n    \"bot_token\": \"1234567890:ABCdefGHIjklMNOpqrsTUVwxyz\",\n    \"webhook_url\": \"https://api.telegram.org/bot\"\n  }\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/channels",
+							"host": ["{{base_url}}"],
+							"path": ["channels"]
+						}
+					}
+				},
+				{
+					"name": "Get Channel",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/channels/:id",
+							"host": ["{{base_url}}"],
+							"path": ["channels", ":id"],
+							"variable": [
+								{
+									"key": "id",
+									"value": ""
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Update Channel",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"settings\": {\n    \"bot_token\": \"updated_token\",\n    \"webhook_url\": \"https://updated-url.com\"\n  }\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/channels/:id",
+							"host": ["{{base_url}}"],
+							"path": ["channels", ":id"],
+							"variable": [
+								{
+									"key": "id",
+									"value": ""
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Delete Channel",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/channels/:id",
+							"host": ["{{base_url}}"],
+							"path": ["channels", ":id"],
+							"variable": [
+								{
+									"key": "id",
+									"value": ""
+								}
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "QR Tokens",
+			"item": [
+				{
+					"name": "Issue QR Token",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    var jsonData = pm.response.json();",
+									"    pm.collectionVariables.set(\"qr_token\", jsonData.data.token);",
+									"    pm.collectionVariables.set(\"qr_token_id\", jsonData.data.id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"expires_at\": \"2025-12-31 23:59:59\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/qr/rooms/:roomId/tokens",
+							"host": ["{{base_url}}"],
+							"path": ["qr", "rooms", ":roomId", "tokens"],
+							"variable": [
+								{
+									"key": "roomId",
+									"value": ""
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Resolve QR Token",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/qr/resolve/:token",
+							"host": ["{{base_url}}"],
+							"path": ["qr", "resolve", ":token"],
+							"variable": [
+								{
+									"key": "token",
+									"value": "{{qr_token}}",
+									"description": "Plain token from issue endpoint"
+								}
+							]
+						},
+						"description": "Public endpoint - No authentication required"
+					}
+				},
+				{
+					"name": "List Room Tokens",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/qr/rooms/:roomId/tokens",
+							"host": ["{{base_url}}"],
+							"path": ["qr", "rooms", ":roomId", "tokens"],
+							"variable": [
+								{
+									"key": "roomId",
+									"value": ""
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Revoke QR Token",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/qr/tokens/:id/revoke",
+							"host": ["{{base_url}}"],
+							"path": ["qr", "tokens", ":id", "revoke"],
+							"variable": [
+								{
+									"key": "id",
+									"value": "{{qr_token_id}}"
+								}
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Proactive Rules",
+			"item": [
+				{
+					"name": "List Proactive Rules",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/proactive-rules",
+							"host": ["{{base_url}}"],
+							"path": ["proactive-rules"]
+						}
+					}
+				},
+				{
+					"name": "Create Proactive Rule",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"trigger_type\": \"ticket_created\",\n  \"trigger_config\": {\n    \"department\": \"Housekeeping\",\n    \"priority\": \"high\"\n  },\n  \"message_template\": \"Hello {{guest_name}}, your ticket #{{ticket_id}} has been created. We'll respond within {{sla_time}} minutes.\",\n  \"is_active\": true\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/proactive-rules",
+							"host": ["{{base_url}}"],
+							"path": ["proactive-rules"]
+						}
+					}
+				},
+				{
+					"name": "Get Proactive Rule",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/proactive-rules/:id",
+							"host": ["{{base_url}}"],
+							"path": ["proactive-rules", ":id"],
+							"variable": [
+								{
+									"key": "id",
+									"value": ""
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Update Proactive Rule",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"message_template\": \"Hi {{guest_name}}, ticket #{{ticket_id}} received. ETA: {{sla_time}} mins.\",\n  \"is_active\": true\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/proactive-rules/:id",
+							"host": ["{{base_url}}"],
+							"path": ["proactive-rules", ":id"],
+							"variable": [
+								{
+									"key": "id",
+									"value": ""
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Preview Template",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"message_template\": \"Hello {{guest_name}}, your room {{room_number}} is ready!\",\n  \"variables\": {\n    \"guest_name\": \"John Doe\",\n    \"room_number\": \"101\"\n  }\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/proactive-rules/preview",
+							"host": ["{{base_url}}"],
+							"path": ["proactive-rules", "preview"]
+						}
+					}
+				},
+				{
+					"name": "Deactivate Proactive Rule",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/proactive-rules/:id/deactivate",
+							"host": ["{{base_url}}"],
+							"path": ["proactive-rules", ":id", "deactivate"],
+							"variable": [
+								{
+									"key": "id",
+									"value": ""
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Delete Proactive Rule",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/proactive-rules/:id",
+							"host": ["{{base_url}}"],
+							"path": ["proactive-rules", ":id"],
+							"variable": [
+								{
+									"key": "id",
+									"value": ""
+								}
+							]
+						}
+					}
+				}
+			]
+		}
+	]
+}
