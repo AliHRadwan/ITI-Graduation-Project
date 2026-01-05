@@ -36,6 +36,11 @@ class Ticket extends Model
         return $this->belongsTo(Conversation::class);
     }
 
+    public function staffUser()
+    {
+        return $this->belongsTo(StaffUser::class, 'actor_staff_user_id');
+    }
+
     public function notificationLogs()
     {
         return $this->hasMany(NotificationLog::class);

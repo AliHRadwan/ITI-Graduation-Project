@@ -23,15 +23,31 @@ class DatabaseSeeder extends Seeder
         ]);
 
         $this->call([
+            // 1. Parents
+            RoomSeeder::class,
             DepartmentSeeder::class,
             ChannelConfigSeeder::class,
-            SlaPolicySeeder::class,
-            NotificationLogSeeder::class,
-            RatingSeeder::class,
-            TicketSeeder::class,
-            TicketEventSeeder::class,
-            RoutingRuleSeeder::class,
             StaffRoleSeeder::class,
+            StaffUserSeeder::class,
+            GuestIdentitySeeder::class,
+            ProactiveRuleSeeder::class,
+
+            // 2. Direct Children
+            QrRoomTokenSeeder::class,
+            StaffMembershipSeeder::class,
+            SlaPolicySeeder::class,
+            RoutingRuleSeeder::class,
+            ConversationSeeder::class,
+
+            // 3. Operational Data
+            MessageSeeder::class,
+            TicketSeeder::class,
+
+            // 4. Deep Children
+            AttachmentSeeder::class,
+            TicketEventSeeder::class,
+            RatingSeeder::class,
+            NotificationLogSeeder::class,
         ]);
     }
 }

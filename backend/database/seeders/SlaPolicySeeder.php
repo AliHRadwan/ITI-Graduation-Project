@@ -2,17 +2,25 @@
 
 namespace Database\Seeders;
 
-use App\Models\SlaPolicy;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use App\Models\SlaPolicy;
+use App\Models\Department;
 
 class SlaPolicySeeder extends Seeder
 {
-    /**
-     * Run the database seeds.
-     */
     public function run(): void
     {
-        SlaPolicy::factory()->count(10)->create();
+        $departments = Department::all();
+
+        foreach ($departments as $dept) {
+            // Check if policy exists to avoid duplicates
+            if (SlaPolicy::where('department_id', $dept->id)->exists()) {
+                continue;
+            }
+
+            SlaPolicy::factory()->create([
+                'department_id' => $dept->id
+            ]);
+        }
     }
 }

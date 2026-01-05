@@ -18,6 +18,8 @@ return new class extends Migration
             $table->enum('priority_default', ['low', 'med', 'high', 'urgent']);
             $table->boolean('is_active')->default(true);
             $table->timestamps();
+
+            $table->foreign('department_id')->references('id')->on('departments')->cascadeOnDelete();
         });
     }
 

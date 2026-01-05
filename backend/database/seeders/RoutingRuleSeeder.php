@@ -3,16 +3,22 @@
 namespace Database\Seeders;
 
 use App\Models\RoutingRule;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
+use App\Models\Department;
 use Illuminate\Database\Seeder;
 
 class RoutingRuleSeeder extends Seeder
 {
-    /**
-     * Run the database seeds.
-     */
     public function run(): void
     {
-        RoutingRule::factory()->count(10)->create();
+        $departments = Department::all();
+
+        if ($departments->isEmpty()) return;
+
+        // Use recycle() to pick existing Departments explicitly
+        // This prevents the factory from trying to create "Maintenance" again and crashing
+        RoutingRule::factory()
+            ->count(10)
+            ->recycle($departments)
+            ->create();
     }
 }

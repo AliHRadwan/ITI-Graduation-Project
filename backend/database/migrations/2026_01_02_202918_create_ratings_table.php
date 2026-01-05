@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('ratings', function (Blueprint $table) {
             $table->uuid('id')->primary();
-            $table->uuid('ticket_id')->nullable();
+            $table->uuid('ticket_id');
             $table->integer('stars')->default(5);
             $table->text('comment')->nullable();
             $table->timestamps();

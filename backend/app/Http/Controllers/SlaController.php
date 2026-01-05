@@ -10,15 +10,15 @@ class SlaController extends Controller
 {
     public function getPolicies()
     {
-        return SlaPolicy::orderBy('department_id')->paginate(10);
+        return SlaPolicy::with('department')->paginate(10);
     }
 
     public function createPolicy(Request $request)
     {
         $validated = $request->validate([
             'department_id' => 'required|uuid|exists:departments,id',
-            'first_response_minutes' => 'required|integer|min:10',
-            'resolution_minutes' => 'required|integer|min:10',
+            'first_response_minutes' => 'required|integer|min:1|max:120',
+            'resolution_minutes' => 'required|integer|min:1|max:4320',
             'quiet_hours' => 'sometimes|array',
             'is_active' => 'sometimes|boolean',
         ]);
@@ -48,7 +48,7 @@ class SlaController extends Controller
     {
         $policy->is_active = false;
         $policy->save();
-        return response()->json('Policy deactivated successfully.', 200);
+        return response()->json(['message' => 'Policy deactivated successfully.'], 200);
     }
 
     public function getBreaches()

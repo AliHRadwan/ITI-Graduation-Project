@@ -10,7 +10,7 @@ class TicketController extends Controller
 {
     public function getTickets()
     {
-        $tickets = Ticket::latest()->paginate(10);
+        $tickets = Ticket::with('department', 'room', 'conversation', 'staffUser')->latest()->paginate(10);
         return response()->json(['tickets' => $tickets], 200);
     }
 
@@ -20,10 +20,11 @@ class TicketController extends Controller
             'room_id' => 'required|uuid|exists:rooms,id',
             'department_id' => 'required|uuid|exists:departments,id',
             'conversation_id' => 'required|uuid|exists:conversations,id',
+            'actor_staff_user_id' => 'sometimes|uuid|exists:staff_users,id',
             'category' => 'required|string|max:255',
             'status' => 'required|enum:new,doing,done,canceled',
             'priority' => 'required|enum:low,med,high,urgent',
-            'description' => 'nullable|text|max:500',
+            'description' => 'required|text|max:500',
         ]);
 
         Ticket::create($validated);
@@ -37,7 +38,18 @@ class TicketController extends Controller
 
     public function update(Request $request, Ticket $ticket)
     {
-        $ticket->update($request->all());
+        $validated = $request->validate([
+            'room_id' => 'sometimes|uuid|exists:rooms,id',
+            'department_id' => 'sometimes|uuid|exists:departments,id',
+            'conversation_id' => 'sometimes|uuid|exists:conversations,id',
+            'actor_staff_user_id' => 'sometimes|uuid|exists:staff_users,id',
+            'category' => 'sometimes|string|max:255',
+            'status' => 'sometimes|enum:new,doing,done,canceled',
+            'priority' => 'sometimes|enum:low,med,high,urgent',
+            'description' => 'sometimes|text|max:500',
+        ]);
+
+        $ticket->update($validated);
         return response()->json(['message' => 'Ticket updated successfully'], 200);
     }
 
@@ -50,23 +62,25 @@ class TicketController extends Controller
 
     public function assignStaff(Request $request, Ticket $ticket)
     {
+        $ticket->update(['actor_staff_user_id' => $request->actor_staff_user_id]);
+
         TicketEvent::create([
             'ticket_id' => $ticket->id,
             'actor_staff_user_id' => $request->actor_staff_user_id,
             'event_type' => 'assigned',
             'note' => 'Ticket assigned to staff ID: ' . $request->actor_staff_user_id . ', ' . $request->note,
         ]);
-
-        $ticket->update(['actor_staff_user_id' => $request->actor_staff_user_id]);
         
         return response()->json(['message' => 'Staff assigned to ticket successfully'], 200);
     }
 
     public function addNote(Request $request, Ticket $ticket)
     {
+        $staffUserId = $ticket->get('actor_staff_user_id');
+
         TicketEvent::create([
             'ticket_id' => $ticket->id,
-            'actor_staff_user_id' => $request->actor_staff_user_id,
+            'actor_staff_user_id' => $staffUserId,
             'event_type' => 'note',
             'note' => $request->note,
         ]);
@@ -78,14 +92,14 @@ class TicketController extends Controller
 
     public function escalate(Request $request, Ticket $ticket)
     {
+        $staffUserId = $ticket->get('actor_staff_user_id');
+
         TicketEvent::create([
             'ticket_id' => $ticket->id,
-            'actor_staff_user_id' => $request->actor_staff_user_id,
+            'actor_staff_user_id' => $staffUserId,
             'event_type' => 'escalated',
             'note' => 'Ticket escalated, ' . $request->note,
         ]);
-
-        $ticket->update(['actor_staff_user_id' => $request->actor_staff_user_id]);
 
         return response()->json(['message' => 'Ticket escalated successfully'], 200);
     }
@@ -98,15 +112,23 @@ class TicketController extends Controller
 
     public function rateTicket(Request $request, Ticket $ticket)
     {
-        $ticket->ratings()->updateOrCreate(
-            ['ticket_id' => $ticket->id],
+        $validated = $request->validate([
+            'stars'   => 'required|integer|min:1|max:5',
+            'comment' => 'nullable|string|max:500',
+        ]);
+
+        $rating = $ticket->rating()->updateOrCreate(
+            [],
             [
-                'stars' => $request->stars,
-                'comment' => $request->comment,
+                'stars'   => $validated['stars'],
+                'comment' => $validated['comment'] ?? null,
             ]
         );
 
-        return response()->json(['message' => 'Rating submitted successfully'], 200);
+        return response()->json([
+            'message' => 'Rating submitted successfully', 
+            'data' => $rating
+        ], 200);
     }
 
     public function getRating(Ticket $ticket)
