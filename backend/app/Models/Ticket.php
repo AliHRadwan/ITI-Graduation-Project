@@ -15,6 +15,7 @@ class Ticket extends Model
         "room_id",
         "department_id",
         "conversation_id",
+        "actor_staff_user_id",
         "category",
         "status",
         "priority",
@@ -34,6 +35,11 @@ class Ticket extends Model
     public function conversation()
     {
         return $this->belongsTo(Conversation::class);
+    }
+
+    public function staffUser()
+    {
+        return $this->belongsTo(StaffUser::class, 'actor_staff_user_id');
     }
 
     public function notificationLogs()

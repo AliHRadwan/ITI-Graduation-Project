@@ -32,7 +32,7 @@ class AttachmentController extends Controller
             default => 'file',
         };
 
-        $url = Storage::disk($disk)->url($path);
+        $url = Storage::disk($disk)->path($path);
 
         return $this->success([
             'type' => $type,

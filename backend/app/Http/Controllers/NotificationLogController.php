@@ -14,7 +14,7 @@ class NotificationLogController extends Controller
             'conversation_id' => 'nullable|uuid|exists:conversations,id',
             'channel_type' => 'required|string',
             'message_type' => 'required|enum:confirm,eta,delay,status,rating',
-            'payload' => 'required|text',
+            'payload' => 'required|text|max:1000',
             'sent_at' => 'nullable|date',
             'status' => 'required|string',
         ]);

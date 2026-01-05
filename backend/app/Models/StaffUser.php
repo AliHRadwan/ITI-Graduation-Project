@@ -7,11 +7,12 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 
 class StaffUser extends Model
 {
     //
-     use HasFactory, Notifiable, HasApiTokens, SoftDeletes;
+     use HasFactory, Notifiable, HasApiTokens, SoftDeletes, HasUuids;
 
     protected $table = 'staff_users';
 

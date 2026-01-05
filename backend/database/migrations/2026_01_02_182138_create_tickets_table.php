@@ -13,19 +13,20 @@ return new class extends Migration
     {
         Schema::create('tickets', function (Blueprint $table) {
             $table->uuid('id')->primary();
-            $table->uuid('room_id')->nullable();
-            $table->uuid('department_id')->nullable();
-            $table->uuid('conversation_id')->nullable();
+            $table->uuid('room_id');
+            $table->uuid('department_id');
+            $table->uuid('conversation_id');
             $table->uuid('actor_staff_user_id')->nullable();
-            $table->string('category')->nullable();
-            $table->enum('status', ['new', 'doing', 'done', 'cancelled'])->default('new');
+            $table->string('category');
+            $table->enum('status', ['new', 'doing', 'done', 'canceled'])->default('new');
             $table->enum('priority', ['low', 'med', 'high', 'urgent'])->default('med');
-            $table->text('description')->nullable();
+            $table->text('description');
             $table->timestamps();
 
             $table->foreign('room_id')->references('id')->on('rooms')->cascadeOnDelete();
             $table->foreign('department_id')->references('id')->on('departments')->cascadeOnDelete();
             $table->foreign('conversation_id')->references('id')->on('conversations')->cascadeOnDelete();
+            $table->foreign('actor_staff_user_id')->references('id')->on('staff_users')->cascadeOnDelete();
         });
     }
 

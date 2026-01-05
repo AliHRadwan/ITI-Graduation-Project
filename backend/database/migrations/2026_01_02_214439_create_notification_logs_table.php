@@ -13,16 +13,16 @@ return new class extends Migration
     {
         Schema::create('notification_logs', function (Blueprint $table) {
             $table->uuid('id')->primary();
-            $table->uuid('ticket_id')->nullable();
+            $table->uuid('ticket_id');
             $table->uuid('conversation_id')->nullable();
             $table->string('channel_type');
             $table->enum('message_type', ['confirm', 'eta', 'delay','status', 'rating']);
-            $table->text('payload')->nullable();
-            $table->dateTime('sent_at')->nullable();
+            $table->text('payload');
+            $table->dateTime('sent_at');
             $table->enum('status', ['sent', 'failed'])->default('sent');
             $table->timestamps();
 
-            $table->foreign('ticket_id')->references('id')->on('tickets')->onDelete('set null');
+            $table->foreign('ticket_id')->references('id')->on('tickets')->cascadeOnDelete();
             $table->foreign('conversation_id')->references('id')->on('conversations')->onDelete('set null');
         });
     }

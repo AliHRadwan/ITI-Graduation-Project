@@ -2,18 +2,29 @@
 
 namespace Database\Seeders;
 
-use App\Models\Ticket;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use App\Models\TicketEvent;
+use App\Models\Ticket;
+use App\Models\StaffUser;
 
 class TicketEventSeeder extends Seeder
 {
-    /**
-     * Run the database seeds.
-     */
     public function run(): void
     {
-        TicketEvent::factory()->count(50)->create();
+        // Load existing data
+        $tickets = Ticket::all();
+        $staff = StaffUser::all();
+
+        // Safety check
+        if ($tickets->isEmpty() || $staff->isEmpty()) {
+            return; 
+        }
+
+        // Create events that belong to REAL tickets and REAL staff
+        TicketEvent::factory()
+            ->count(50)
+            ->recycle($tickets) // Link to existing tickets
+            ->recycle($staff)   // Link to existing staff (actors)
+            ->create();
     }
 }

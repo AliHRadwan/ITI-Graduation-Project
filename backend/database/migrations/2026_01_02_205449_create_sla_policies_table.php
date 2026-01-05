@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('sla_policies', function (Blueprint $table) {
             $table->uuid('id')->primary();
-            $table->uuid('department_id')->nullable();
+            $table->uuid('department_id');
             $table->integer('first_response_minutes')->default(60);
             $table->integer('resolution_minutes')->default(1440);
             $table->json('quiet_hours')->nullable();
