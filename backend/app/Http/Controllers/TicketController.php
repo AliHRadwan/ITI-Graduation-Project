@@ -22,9 +22,9 @@ class TicketController extends Controller
             'conversation_id' => 'required|uuid|exists:conversations,id',
             'actor_staff_user_id' => 'sometimes|uuid|exists:staff_users,id',
             'category' => 'required|string|max:255',
-            'status' => 'required|enum:new,doing,done,canceled',
-            'priority' => 'required|enum:low,med,high,urgent',
-            'description' => 'required|text|max:500',
+            'status' => 'required|in:new,doing,done,canceled',
+            'priority' => 'required|in:low,med,high,urgent',
+            'description' => 'required|string|max:500',
         ]);
 
         Ticket::create($validated);

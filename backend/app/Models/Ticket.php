@@ -15,6 +15,7 @@ class Ticket extends Model
         "room_id",
         "department_id",
         "conversation_id",
+        "actor_staff_user_id",
         "category",
         "status",
         "priority",
