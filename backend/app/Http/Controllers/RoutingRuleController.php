@@ -4,13 +4,12 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\RoutingRule;
-use Symfony\Component\Routing\Route;
 
 class RoutingRuleController extends Controller
 {
     public function getRules()
     {
-        $data = RoutingRule::latest()->paginate(10);
+        $data = RoutingRule::with('department')->latest()->paginate(10);
         return response()->json(['data' => $data], 200);
     }
 
@@ -18,35 +17,39 @@ class RoutingRuleController extends Controller
     {
         $validated = $request->validate([
             'department_id' => 'required|uuid|exists:departments,id',
-            'match_category' => 'required|string',
-            'priority_default' => 'required|enum:low,med,high,urgent',
+            'match_category' => 'required|string|max:255',
+            'priority_default' => 'required|in:low,med,high,urgent',
             'is_active' => 'required|boolean',
         ]);
 
-        RoutingRule::create($validated);
+        $rule = RoutingRule::create($validated);
 
-        return response()->json(['message' => 'Routing rule created successfully'], 201);
+        return response()->json([
+            'message' => 'Routing rule created successfully', 
+            'data' => $rule
+        ], 201);
     }   
 
-    public function update(Request $request, $routingRule)
+    public function update(Request $request, RoutingRule $routingRule)
     {
         $validated = $request->validate([
             'department_id' => 'sometimes|uuid|exists:departments,id',
-            'match_category' => 'sometimes|string',
-            'priority_default' => 'sometimes|enum:low,med,high,urgent',
+            'match_category' => 'sometimes|string|max:255',
+            'priority_default' => 'sometimes|in:low,med,high,urgent',
             'is_active' => 'sometimes|boolean',
         ]);
 
         $routingRule->update($validated);
 
-        return response()->json(['message' => 'Routing rule updated successfully'], 200);
+        return response()->json([
+            'message' => 'Routing rule updated successfully',
+            'data' => $routingRule
+        ], 200);
     }
 
-    public function deactivate($routingRule)
+    public function deactivate(RoutingRule $routingRule)
     {
-        $routingRule->is_active = false;
-        $routingRule->save();
-        
+        $routingRule->update(['is_active' => false]);
         return response()->json(['message' => 'Routing rule deactivated successfully'], 200);
     }
 }
