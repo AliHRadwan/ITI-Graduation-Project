@@ -125,7 +125,7 @@ Route::prefix('sla/policies')->middleware('auth:sanctum')->group(function () {
 Route::middleware('auth:sanctum')->get('/sla/breaches', [SlaController::class, 'getBreaches']);
 
 Route::prefix('notifications')->middleware('auth:sanctum')->group(function () {
-    Route::post('/log', [NotificationLogController::class, 'createLog'])->middleware('manager.or.admin');
+    Route::post('/logs', [NotificationLogController::class, 'createLog'])->middleware('manager.or.admin');
     Route::get('/logs', [NotificationLogController::class, 'getLogs']);
     Route::post('/logs/{notificationLog}/mark-failed', [NotificationLogController::class, 'markFailed'])->middleware('manager.or.admin');
     Route::post('/logs/{notificationLog}/mark-sent', [NotificationLogController::class, 'markSent'])->middleware('manager.or.admin');
