@@ -10,13 +10,15 @@ class SlaController extends Controller
 {
     public function getPolicies()
     {
-        return SlaPolicy::with('department')->paginate(10);
+        return response()->json([
+            'data' => SlaPolicy::with('department')->paginate(10)
+        ], 200);
     }
 
     public function createPolicy(Request $request)
     {
         $validated = $request->validate([
-            'department_id' => 'required|uuid|exists:departments,id',
+            'department_id' => 'required|uuid|exists:departments,id|unique:sla_policies,department_id',
             'first_response_minutes' => 'required|integer|min:1|max:120',
             'resolution_minutes' => 'required|integer|min:1|max:4320',
             'quiet_hours' => 'sometimes|array',
@@ -24,7 +26,7 @@ class SlaController extends Controller
         ]);
 
         $policy = SlaPolicy::create($validated);
-            return response()->json([
+        return response()->json([
             'message' => 'Policy created successfully',
             'data' => $policy
         ], 201);
@@ -33,9 +35,9 @@ class SlaController extends Controller
     public function updatePolicy(Request $request, SlaPolicy $policy)
     {
         $validated = $request->validate([
-            'department_id' => 'sometimes|uuid|exists:departments,id',
-            'first_response_minutes' => 'sometimes|integer|min:10',
-            'resolution_minutes' => 'sometimes|integer|min:10',
+            'department_id' => 'sometimes|uuid|exists:departments,id|unique:sla_policies,department_id,' . $policy->id,
+            'first_response_minutes' => 'sometimes|integer|min:1|max:120',
+            'resolution_minutes' => 'sometimes|integer|min:1|max:4320',
             'quiet_hours' => 'sometimes|array',
             'is_active' => 'sometimes|boolean',
         ]);
@@ -46,17 +48,20 @@ class SlaController extends Controller
 
     public function deactivatePolicy(SlaPolicy $policy)
     {
-        $policy->is_active = false;
-        $policy->save();
+        $policy->update(['is_active' => false]);
         return response()->json(['message' => 'Policy deactivated successfully.'], 200);
     }
 
     public function getBreaches()
     {
-        $newTickets = Ticket::with('department.slaPolicy')->where('status', 'new')->get();
+        $newTickets = Ticket::with('department.slaPolicy')
+            ->where('status', 'new')
+            ->get();
+
         $firstResponseBreaches = [];
         foreach ($newTickets as $ticket) {
-            if ($ticket->checkSlaFirstResponseBreaches($ticket->department->slaPolicy ?? null)) {
+            $policy = $ticket->department->slaPolicy ?? null;
+            if ($policy && $ticket->checkSlaFirstResponseBreaches($policy)) {
                 $firstResponseBreaches[] = $ticket;
             }
         }
@@ -64,9 +69,11 @@ class SlaController extends Controller
         $unresolvedTickets = Ticket::with('department.slaPolicy')
             ->whereIn('status', ['new', 'doing'])
             ->get();
+
         $resolutionBreaches = [];
         foreach ($unresolvedTickets as $ticket) {
-            if ($ticket->checkSlaResolutionBreaches($ticket->department->slaPolicy ?? null)) {
+            $policy = $ticket->department->slaPolicy ?? null;
+            if ($policy && $ticket->checkSlaResolutionBreaches($policy)) {
                 $resolutionBreaches[] = $ticket;
             }
         }

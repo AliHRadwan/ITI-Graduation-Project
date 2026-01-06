@@ -1,16 +1,140 @@
-# React + Vite
+# Hotel AI Concierge - Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A modern React-based frontend for the Hotel AI Concierge system with multi-dashboard support for Admin and Staff roles.
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- **Admin Dashboard**: Analytics, tickets, conversations, rooms, and staff management
+- **Staff Dashboard**: Personal ticket queue and performance metrics
+- **Real-time Updates**: Automatic polling for live data
+- **Responsive Design**: Mobile-first, works on all devices
+- **Authentication**: Role-based access control with Laravel Sanctum
+- **Modern UI**: Built with Tailwind CSS and Headless UI
 
-## React Compiler
+## Tech Stack
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- React 19
+- React Router v7
+- Tailwind CSS
+- Headless UI
+- React Query (TanStack Query)
+- Zustand (State Management)
+- Recharts (Analytics)
+- React Hook Form + Zod (Form Validation)
+- Axios (API Client)
+- date-fns (Date Formatting)
 
-## Expanding the ESLint configuration
+## Getting Started
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+### Prerequisites
+
+- Node.js 18+ and npm
+- Backend API running on http://localhost:8001
+
+### Installation
+
+1. Install dependencies:
+
+```bash
+npm install
+```
+
+2. Create environment file:
+
+```bash
+cp .env.example .env
+```
+
+3. Start development server:
+
+```bash
+npm run dev
+```
+
+The app will be available at http://localhost:5173
+
+### Building for Production
+
+```bash
+npm run build
+npm run preview
+```
+
+## Project Structure
+
+```
+src/
+├── api/              # API client and endpoint modules
+├── components/       # Reusable components
+│   ├── ui/          # UI component library
+│   └── layout/      # Layout components
+├── features/        # Feature modules
+│   ├── auth/
+│   ├── analytics/
+│   ├── tickets/
+│   ├── conversations/
+│   ├── rooms/
+│   └── staff/
+├── hooks/           # Custom React hooks
+├── store/           # Zustand stores
+├── utils/           # Helper functions
+├── routes/          # Route definitions
+└── App.jsx          # Main app component
+```
+
+## Available Routes
+
+### Public
+- `/login` - Login page
+- `/forgot-password` - Password reset
+
+### Admin (Requires Admin/Manager role)
+- `/admin/dashboard` - Analytics dashboard
+- `/admin/tickets` - Ticket management
+- `/admin/conversations` - Guest conversations
+- `/admin/rooms` - Room management
+- `/admin/staff/users` - Staff management
+- `/admin/staff/departments` - Department management
+
+### Staff
+- `/staff/queue` - Personal ticket queue
+- `/staff/conversations` - Active conversations
+- `/staff/metrics` - Personal performance metrics
+
+## Real-time Updates
+
+The application uses polling for real-time updates:
+- **Dashboard metrics**: Every 30 seconds
+- **Tickets**: Every 15 seconds
+- **Conversations**: Every 5 seconds
+
+## Authentication
+
+Uses Laravel Sanctum for authentication. Tokens are stored in localStorage and automatically included in API requests.
+
+## Development
+
+### Linting
+
+```bash
+npm run lint
+```
+
+### Code Style
+
+The project uses ESLint with React-specific rules. Please ensure your code passes linting before committing.
+
+## Environment Variables
+
+- `VITE_API_URL` - Backend API URL (default: http://localhost:8001/api)
+
+## Browser Support
+
+- Chrome (latest)
+- Firefox (latest)
+- Safari (latest)
+- Edge (latest)
+
+## License
+
+MIT

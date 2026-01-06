@@ -16,11 +16,13 @@ class DashboardController extends Controller
     {
         try {
             // Top-level numbers: open tickets, overdue, avg rating, active conversations, etc.
-            $openTickets = Ticket::where('status', 'new')->count();
-            $overdueTickets = Ticket::where('status', 'new')
+            // Count tickets that are 'new' or 'doing' (active tickets)
+            $openTickets = Ticket::whereIn('status', ['new', 'doing'])->count();
+            $overdueTickets = Ticket::whereIn('status', ['new', 'doing'])
                 ->where('created_at', '<', now()->subDays(7)) // Assuming overdue if open for more than 7 days
                 ->count();
             $avgRating = Rating::avg('stars') ?? 0;
+            // Conversations use 'open' status, not 'active'
             $activeConversations = Conversation::where('status', 'open')->count();
 
             return response()->json([

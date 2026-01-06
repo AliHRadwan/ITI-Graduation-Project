@@ -15,10 +15,40 @@ use App\Http\Controllers\Api\StaffUserController;
 use App\Http\Controllers\Api\StaffRoleController;
 use App\Http\Controllers\Api\StaffMembershipController;
 use App\Http\Controllers\Api\LoginController;
+use App\Http\Controllers\Api\IntegrationController;
 
 
 
 //==============ali gamal========================================================================
+
+// ========================================
+// Integration endpoints for n8n/external automation
+// ========================================
+Route::prefix('integrations')->group(function () {
+    // Guest & Conversation management
+    Route::post('/conversations/upsert', [IntegrationController::class, 'upsertConversation']);
+    Route::get('/conversations/{conversation}/context', [IntegrationController::class, 'getConversationContext']);
+    Route::get('/conversations/{conversation}/chat-id', [IntegrationController::class, 'getChatId']);
+    
+    // Message logging
+    Route::post('/conversations/{conversation}/messages', [IntegrationController::class, 'logMessage']);
+    
+    // Ticket management
+    Route::post('/tickets', [IntegrationController::class, 'createTicket']);
+    
+    // Handoff management
+    Route::post('/conversations/{conversation}/handoff', [IntegrationController::class, 'handoffConversation']);
+});
+
+// ========================================
+// Webhook endpoints (for n8n callbacks)
+// ========================================
+Route::prefix('webhooks/n8n')->group(function () {
+    // Ticket status updates will be sent here (configured in TicketObserver)
+    Route::post('/ticket-updated', function () {
+        return response()->json(['received' => true]);
+    });
+});
 
 Route::middleware('auth:sanctum')->group(function () {
     // 5) Guests
@@ -125,7 +155,7 @@ Route::prefix('sla/policies')->middleware('auth:sanctum')->group(function () {
 Route::middleware('auth:sanctum')->get('/sla/breaches', [SlaController::class, 'getBreaches']);
 
 Route::prefix('notifications')->middleware('auth:sanctum')->group(function () {
-    Route::post('/log', [NotificationLogController::class, 'createLog'])->middleware('manager.or.admin');
+    Route::post('/logs', [NotificationLogController::class, 'createLog'])->middleware('manager.or.admin');
     Route::get('/logs', [NotificationLogController::class, 'getLogs']);
     Route::post('/logs/{notificationLog}/mark-failed', [NotificationLogController::class, 'markFailed'])->middleware('manager.or.admin');
     Route::post('/logs/{notificationLog}/mark-sent', [NotificationLogController::class, 'markSent'])->middleware('manager.or.admin');

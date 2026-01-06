@@ -13,17 +13,17 @@ return new class extends Migration
     {
         Schema::create('notification_logs', function (Blueprint $table) {
             $table->uuid('id')->primary();
-            $table->uuid('ticket_id');
-            $table->uuid('conversation_id')->nullable();
-            $table->string('channel_type');
+            $table->uuid('ticket_id')->nullable();
+            $table->uuid('conversation_id');
+            $table->enum('channel_type', ['web', 'telegram', 'whatsapp']);
             $table->enum('message_type', ['confirm', 'eta', 'delay','status', 'rating']);
             $table->text('payload');
             $table->dateTime('sent_at');
-            $table->enum('status', ['sent', 'failed'])->default('sent');
+            $table->enum('status', ['sent', 'failed', 'pending'])->default('pending');
             $table->timestamps();
 
-            $table->foreign('ticket_id')->references('id')->on('tickets')->cascadeOnDelete();
-            $table->foreign('conversation_id')->references('id')->on('conversations')->onDelete('set null');
+            $table->foreign('ticket_id')->references('id')->on('tickets')->onDelete('set null');
+            $table->foreign('conversation_id')->references('id')->on('conversations')->cascadeOnDelete();
         });
     }
 
