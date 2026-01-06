@@ -1,0 +1,348 @@
+<?php
+
+namespace App\Http\Controllers\Api;
+
+use App\Http\Controllers\Controller;
+use App\Models\GuestIdentity;
+use App\Models\Conversation;
+use App\Models\Message;
+use App\Models\Ticket;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\DB;
+
+class IntegrationController extends Controller
+{
+    /**
+     * Upsert guest identity and get/create active conversation
+     * Used by n8n to register guest and get conversation context
+     */
+    public function upsertConversation(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'channel_type' => 'required|string',
+            'channel_user_id' => 'required|string',
+            'chat_id' => 'required|string',
+            'preferred_language' => 'nullable|string|max:10',
+            'user_metadata' => 'nullable|array',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'error' => 'Validation failed',
+                'details' => $validator->errors()
+            ], 422);
+        }
+
+        try {
+            // Find or create guest identity
+            $guest = GuestIdentity::firstOrCreate(
+                [
+                    'channel_type' => $request->channel_type,
+                    'channel_user_id' => $request->channel_user_id,
+                ],
+                [
+                    'preferred_language' => $request->preferred_language ?? 'en',
+                    'first_seen_at' => now(),
+                ]
+            );
+
+            // Update preferred language if changed
+            if ($request->preferred_language && $guest->preferred_language !== $request->preferred_language) {
+                $guest->update(['preferred_language' => $request->preferred_language]);
+            }
+
+            // Find or create open conversation
+            $conversation = Conversation::firstOrCreate(
+                [
+                    'guest_identity_id' => $guest->id,
+                    'status' => 'open',
+                ],
+                [
+                    'started_at' => now(),
+                    'last_seen_at' => now(),
+                ]
+            );
+
+            // Update last_seen_at and store chat_id
+            $metadata = is_array($conversation->metadata) ? $conversation->metadata : [];
+            $metadata['chat_id'] = $request->chat_id;
+            if ($request->user_metadata) {
+                $metadata['user_metadata'] = $request->user_metadata;
+            }
+            
+            $conversation->update([
+                'last_seen_at' => now(),
+                'metadata' => $metadata,
+            ]);
+
+            // Get room info if conversation is linked to a room
+            $room = $conversation->room;
+
+            return response()->json([
+                'guest_identity_id' => $guest->id,
+                'conversation_id' => $conversation->id,
+                'room_id' => $conversation->room_id,
+                'room_number' => $room?->room_number,
+                'status' => $conversation->status,
+                'is_handoff' => $conversation->status === 'handoff',
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'Failed to upsert conversation',
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get conversation context for LLM
+     * Returns recent messages, room info, and open tickets
+     */
+    public function getConversationContext(Request $request, $conversationId)
+    {
+        $limit = $request->query('limit', 5);
+        $includeTickets = $request->query('include_tickets', 'true') === 'true';
+
+        try {
+            $conversation = Conversation::with('room')->findOrFail($conversationId);
+
+            // Get recent messages
+            $recentMessages = Message::where('conversation_id', $conversationId)
+                ->orderBy('created_at', 'desc')
+                ->limit($limit)
+                ->get()
+                ->reverse()
+                ->map(function ($msg) {
+                    return [
+                        'role' => $msg->role,
+                        'content' => $msg->content,
+                        'created_at' => $msg->created_at->toIso8601String(),
+                    ];
+                })
+                ->values();
+
+            // Get open tickets if requested
+            $openTickets = [];
+            $openTicketsCount = 0;
+            
+            if ($includeTickets) {
+                $openTickets = Ticket::where('conversation_id', $conversationId)
+                    ->whereIn('status', ['open', 'in_progress'])
+                    ->get()
+                    ->map(function ($ticket) {
+                        return [
+                            'id' => $ticket->id,
+                            'category' => $ticket->category,
+                            'priority' => $ticket->priority,
+                            'description' => $ticket->description,
+                            'status' => $ticket->status,
+                        ];
+                    });
+                $openTicketsCount = $openTickets->count();
+            }
+
+            return response()->json([
+                'conversation_id' => $conversation->id,
+                'room' => $conversation->room ? [
+                    'room_number' => $conversation->room->room_number,
+                    'floor' => $conversation->room->floor,
+                    'room_type' => $conversation->room->room_type,
+                ] : null,
+                'recent_messages' => $recentMessages,
+                'open_tickets' => $openTickets,
+                'open_tickets_count' => $openTicketsCount,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'Failed to get conversation context',
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Log a message to the conversation
+     * Used by n8n to store both guest and assistant messages
+     */
+    public function logMessage(Request $request, $conversationId)
+    {
+        $validator = Validator::make($request->all(), [
+            'role' => 'required|in:guest,assistant',
+            'content' => 'required|string',
+            'extracted_entities' => 'nullable|array',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'error' => 'Validation failed',
+                'details' => $validator->errors()
+            ], 422);
+        }
+
+        try {
+            $message = Message::create([
+                'conversation_id' => $conversationId,
+                'role' => $request->role,
+                'content' => $request->content,
+                'extracted_entities' => $request->extracted_entities,
+                'created_at' => now(),
+            ]);
+
+            return response()->json([
+                'message_id' => $message->id,
+                'created_at' => $message->created_at->toIso8601String(),
+            ], 201);
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'Failed to log message',
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Create a ticket from n8n
+     * Used for service requests, complaints, emergencies
+     */
+    public function createTicket(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'conversation_id' => 'required|uuid|exists:conversations,id',
+            'room_id' => 'nullable|uuid|exists:rooms,id',
+            'category' => 'required|in:housekeeping,food_and_drinks,maintenance,room_service,other',
+            'priority' => 'required|in:low,medium,high,urgent',
+            'description' => 'required|string',
+            'source' => 'nullable|string',
+            'is_emergency' => 'nullable|boolean',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'error' => 'Validation failed',
+                'details' => $validator->errors()
+            ], 422);
+        }
+
+        try {
+            DB::beginTransaction();
+
+            // Create ticket
+            $ticket = Ticket::create([
+                'conversation_id' => $request->conversation_id,
+                'room_id' => $request->room_id,
+                'category' => $request->category,
+                'priority' => $request->priority,
+                'description' => $request->description,
+                'status' => 'open',
+            ]);
+
+            // Log ticket creation event
+            $ticket->events()->create([
+                'event_type' => 'created',
+                'description' => $request->is_emergency ? 'Emergency ticket created via AI agent' : 'Ticket created via AI agent',
+                'metadata' => [
+                    'source' => $request->source ?? 'n8n_agent',
+                    'is_emergency' => $request->is_emergency ?? false,
+                ],
+            ]);
+
+            // TODO: Send notification to appropriate department/staff
+            // This would integrate with your notification system
+
+            DB::commit();
+
+            return response()->json([
+                'ticket_id' => $ticket->id,
+                'status' => $ticket->status,
+                'notification_sent' => false, // Update when notification system is integrated
+            ], 201);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'error' => 'Failed to create ticket',
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Mark conversation as handoff
+     * Notifies staff that human intervention is needed
+     */
+    public function handoffConversation(Request $request, $conversationId)
+    {
+        $validator = Validator::make($request->all(), [
+            'reason' => 'nullable|string',
+            'priority' => 'nullable|in:low,medium,high,urgent',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'error' => 'Validation failed',
+                'details' => $validator->errors()
+            ], 422);
+        }
+
+        try {
+            $conversation = Conversation::findOrFail($conversationId);
+            
+            $conversation->update([
+                'status' => 'handoff',
+            ]);
+
+            // Store handoff details in metadata
+            $metadata = is_array($conversation->metadata) ? $conversation->metadata : [];
+            $metadata['handoff'] = [
+                'reason' => $request->reason,
+                'priority' => $request->priority ?? 'medium',
+                'requested_at' => now()->toIso8601String(),
+            ];
+            $conversation->update(['metadata' => $metadata]);
+
+            // TODO: Notify staff about handoff request
+            // This would integrate with your notification system
+
+            return response()->json([
+                'conversation_id' => $conversation->id,
+                'status' => $conversation->status,
+                'handoff_requested' => true,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'Failed to handoff conversation',
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get chat_id for a conversation (for proactive notifications)
+     */
+    public function getChatId($conversationId)
+    {
+        try {
+            $conversation = Conversation::findOrFail($conversationId);
+            
+            $metadata = is_array($conversation->metadata) ? $conversation->metadata : [];
+            $chatId = $metadata['chat_id'] ?? null;
+
+            if (!$chatId) {
+                return response()->json([
+                    'error' => 'Chat ID not found for this conversation'
+                ], 404);
+            }
+
+            return response()->json([
+                'chat_id' => $chatId,
+                'channel_type' => $conversation->guestIdentity->channel_type ?? 'telegram',
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'Failed to get chat ID',
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+}
+

@@ -26,11 +26,13 @@ class Conversation extends Model
         'status',
         'started_at',
         'last_seen_at',
+        'metadata',
     ];
 
     protected $casts = [
         'started_at' => 'datetime',
         'last_seen_at' => 'datetime',
+        'metadata' => 'array',
     ];
 
     public function guestIdentity(): BelongsTo
