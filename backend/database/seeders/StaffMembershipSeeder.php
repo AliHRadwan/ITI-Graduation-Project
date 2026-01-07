@@ -11,34 +11,52 @@ use App\Models\StaffRole;
 
 class StaffMembershipSeeder extends Seeder
 {
-    /**
-     * Run the database seeds.
-     */
     public function run(): void
     {
-        // 1. Get the existing data we created in previous steps
         $users = StaffUser::all();
         $departments = Department::all();
         $roles = StaffRole::all();
 
-        // Safety check: ensure we actually have data to work with
+        // Safety check
         if ($users->isEmpty() || $departments->isEmpty() || $roles->isEmpty()) {
-            $this->command->error('Missing users, departments, or roles. Did you run those seeders first?');
+            $this->command->error('Missing users, departments, or roles.');
             return;
         }
 
-        // 2. Loop through every existing user and assign them to a random department
+        // 1. Capture the critical IDs
+        $adminRole = $roles->firstWhere('name', 'Admin');
+        $managementDept = $departments->firstWhere('name', 'Management');
+
         foreach ($users as $user) {
-            
-            // Check if this user already has a membership (to avoid duplicates if you run seed twice)
+            // Skip if already has a membership
             if (StaffMembership::where('staff_user_id', $user->id)->exists()) {
                 continue;
             }
 
+            // --- LOGIC START ---
+
+            if ($user->email === 'admin@hotel.com' && $adminRole && $managementDept) {
+                // CASE 1: The Super Admin
+                // Strictly enforce Admin Role + Management Dept
+                $roleIdToAssign = $adminRole->id;
+                $deptIdToAssign = $managementDept->id;
+            } else {
+                // CASE 2: Everyone Else
+                // Logic: "Admin" role is forbidden for them.
+                
+                // Get a random role from the list EXCLUDING the Admin role
+                $availableRoles = $roles->where('id', '!=', $adminRole->id);
+                
+                $roleIdToAssign = $availableRoles->random()->id;
+                $deptIdToAssign = $departments->random()->id;
+            }
+
+            // --- LOGIC END ---
+
             StaffMembership::factory()->create([
-                'staff_user_id' => $user->id,                  // Use the EXISTING user
-                'department_id' => $departments->random()->id, // Use a RANDOM EXISTING department
-                'staff_role_id' => $roles->random()->id,       // Use a RANDOM EXISTING role
+                'staff_user_id' => $user->id,
+                'department_id' => $deptIdToAssign,
+                'staff_role_id' => $roleIdToAssign,
             ]);
         }
     }
