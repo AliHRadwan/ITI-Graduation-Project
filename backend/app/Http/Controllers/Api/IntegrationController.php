@@ -204,6 +204,7 @@ class IntegrationController extends Controller
     /**
      * Create a ticket from n8n
      * Used for service requests, complaints, emergencies
+     * Auto-assigns to department and least-busy staff using round-robin
      */
     public function createTicket(Request $request)
     {
@@ -227,34 +228,95 @@ class IntegrationController extends Controller
         try {
             DB::beginTransaction();
 
-            // Create ticket
+            // 1️⃣ Find department based on category using routing rules
+            $departmentId = null;
+            $routingRule = \App\Models\RoutingRule::where('match_category', $request->category)
+                ->where('is_active', true)
+                ->first();
+
+            if ($routingRule) {
+                $departmentId = $routingRule->department_id;
+            }
+
+            // 2️⃣ Find least-busy staff in the department (Round-Robin)
+            $staffUserId = null;
+            
+            if ($departmentId) {
+                $leastBusyMembership = \App\Models\StaffMembership::where('department_id', $departmentId)
+                    ->whereHas('staffUser', function($q) {
+                        $q->where('status', 'active'); // Only active staff
+                    })
+                    ->with('staffUser')
+                    ->get()
+                    ->map(function($membership) {
+                        // Count open tickets for each staff member
+                        $openTickets = \App\Models\Ticket::where('actor_staff_user_id', $membership->staff_user_id)
+                            ->whereIn('status', ['new', 'doing'])
+                            ->count();
+                        
+                        $membership->open_ticket_count = $openTickets;
+                        return $membership;
+                    })
+                    ->sortBy('open_ticket_count')
+                    ->first();
+
+                if ($leastBusyMembership) {
+                    $staffUserId = $leastBusyMembership->staff_user_id;
+                }
+            }
+
+            // 3️⃣ Create ticket with auto-assignment
             $ticket = Ticket::create([
                 'conversation_id' => $request->conversation_id,
                 'room_id' => $request->room_id,
+                'department_id' => $departmentId,
+                'actor_staff_user_id' => $staffUserId,
                 'category' => $request->category,
                 'priority' => $request->priority,
                 'description' => $request->description,
-                'status' => 'open',
+                'status' => 'new',
             ]);
 
-            // Log ticket creation event
+            // 4️⃣ Log ticket creation event
+            $eventDescription = $request->is_emergency 
+                ? 'Emergency ticket created via AI agent' 
+                : 'Ticket created via AI agent';
+            
+            if ($staffUserId) {
+                $eventDescription .= ' and auto-assigned via round-robin';
+            }
+
             $ticket->events()->create([
                 'event_type' => 'created',
-                'description' => $request->is_emergency ? 'Emergency ticket created via AI agent' : 'Ticket created via AI agent',
+                'description' => $eventDescription,
                 'metadata' => [
                     'source' => $request->source ?? 'n8n_agent',
                     'is_emergency' => $request->is_emergency ?? false,
+                    'auto_assigned' => $staffUserId !== null,
+                    'assignment_method' => 'round_robin',
                 ],
             ]);
 
-            // TODO: Send notification to appropriate department/staff
-            // This would integrate with your notification system
+            // 5️⃣ Log assignment event if staff was assigned
+            if ($staffUserId) {
+                $ticket->events()->create([
+                    'event_type' => 'assigned',
+                    'description' => 'Auto-assigned to staff member via round-robin algorithm',
+                    'metadata' => [
+                        'staff_user_id' => $staffUserId,
+                        'department_id' => $departmentId,
+                    ],
+                ]);
+            }
 
             DB::commit();
 
             return response()->json([
                 'ticket_id' => $ticket->id,
                 'status' => $ticket->status,
+                'department_id' => $departmentId,
+                'assigned_staff_id' => $staffUserId,
+                'auto_assigned' => $staffUserId !== null,
                 'notification_sent' => false, // Update when notification system is integrated
             ], 201);
         } catch (\Exception $e) {
