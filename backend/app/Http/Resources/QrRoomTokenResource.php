@@ -14,9 +14,9 @@ class QrRoomTokenResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
-        // Generate deep link using token ID instead of plain token (for existing tokens)
-        // Frontend will display this as a QR code
-        $deepLink = config('app.url') . '/guest/room/' . $this->room_id . '?token=' . $this->id;
+        // Generate Telegram deep link for QR code
+        // Uses token ID for existing tokens (stored in database)
+        $deepLink = 'https://t.me/' . config('telegram.bot_username') . '?start=' . $this->id;
         
         return [
             'id' => $this->id,
