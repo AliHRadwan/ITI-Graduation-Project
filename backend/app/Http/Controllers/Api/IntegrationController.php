@@ -7,6 +7,7 @@ use App\Models\GuestIdentity;
 use App\Models\Conversation;
 use App\Models\Message;
 use App\Models\Ticket;
+use App\Models\Room;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
@@ -176,7 +177,7 @@ class IntegrationController extends Controller
     public function logMessage(Request $request, $conversationId)
     {
         $validator = Validator::make($request->all(), [
-            'role' => 'required|in:guest,assistant',
+            'role' => 'required|in:guest,agent,staff,system',
             'content' => 'required|string',
             'extracted_entities' => 'nullable|array',
         ]);
