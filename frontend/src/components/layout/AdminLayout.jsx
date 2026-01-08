@@ -8,6 +8,7 @@ import {
   UsersIcon,
   Bars3Icon,
   XMarkIcon,
+  BookOpenIcon,
 } from '@heroicons/react/24/outline';
 import Header from './Header';
 
@@ -18,6 +19,7 @@ const navigation = [
   { name: 'Rooms', href: '/admin/rooms', icon: BuildingOfficeIcon },
   { name: 'Staff', href: '/admin/staff/users', icon: UsersIcon },
   { name: 'Departments', href: '/admin/staff/departments', icon: BuildingOfficeIcon },
+  { name: 'Knowledge Base', href: '/admin/knowledge-base', icon: BookOpenIcon },
 ];
 
 export default function AdminLayout() {

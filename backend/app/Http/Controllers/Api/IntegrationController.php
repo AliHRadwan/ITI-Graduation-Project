@@ -23,6 +23,7 @@ class IntegrationController extends Controller
             'channel_type' => 'required|string',
             'channel_user_id' => 'required|string',
             'chat_id' => 'required|string',
+            'room_id' => 'nullable|uuid|exists:rooms,id',
             'preferred_language' => 'nullable|string|max:10',
             'user_metadata' => 'nullable|array',
         ]);
@@ -71,10 +72,17 @@ class IntegrationController extends Controller
                 $metadata['user_metadata'] = $request->user_metadata;
             }
             
-            $conversation->update([
+            // Update conversation with room_id if provided (from QR scan)
+            $updateData = [
                 'last_seen_at' => now(),
                 'metadata' => $metadata,
-            ]);
+            ];
+            
+            if ($request->room_id && !$conversation->room_id) {
+                $updateData['room_id'] = $request->room_id;
+            }
+            
+            $conversation->update($updateData);
 
             // Get room info if conversation is linked to a room
             $room = $conversation->room;
@@ -228,6 +236,28 @@ class IntegrationController extends Controller
         try {
             DB::beginTransaction();
 
+            // 0️⃣ Validate and get room_id (explicit from request or fallback from conversation)
+            $roomId = $request->room_id;
+            
+            // Fallback: Get room_id from conversation if not provided
+            if (!$roomId) {
+                $conversation = Conversation::findOrFail($request->conversation_id);
+                $roomId = $conversation->room_id;
+            }
+            
+            // Validate room_id exists (guest must scan QR code first)
+            if (!$roomId) {
+                DB::rollBack();
+                return response()->json([
+                    'error' => 'Room information required',
+                    'message' => 'Cannot create ticket without room information. Guest must scan the room QR code first to link their conversation to a room.',
+                    'hint' => 'Ask the guest to scan the QR code in their room.'
+                ], 422);
+            }
+            
+            // Verify room exists and is valid
+            $room = Room::findOrFail($roomId);
+
             // 1️⃣ Find department based on category using routing rules
             $departmentId = null;
             $routingRule = \App\Models\RoutingRule::where('match_category', $request->category)
@@ -268,7 +298,7 @@ class IntegrationController extends Controller
             // 3️⃣ Create ticket with auto-assignment
             $ticket = Ticket::create([
                 'conversation_id' => $request->conversation_id,
-                'room_id' => $request->room_id,
+                'room_id' => $roomId, // Validated room_id from request or conversation
                 'department_id' => $departmentId,
                 'actor_staff_user_id' => $staffUserId,
                 'category' => $request->category,
