@@ -1,0 +1,70 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual Environment
+venv/
+env/
+ENV/
+.venv
+
+# Environment Variables
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Logs
+*.log
+logs/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+.eggs/
+
+# RAG Specific - Vector Database
+chroma_db/
+vector_store/
+*.db
+*.sqlite
+*.sqlite3
+
+# RAG Specific - Knowledge Documents (Large Files)
+# Keep directory structure but ignore actual documents
+hotel_knowledge/**/*.pdf
+hotel_knowledge/**/*.docx
+hotel_knowledge/**/*.doc
+hotel_knowledge/**/*.txt
+hotel_knowledge/**/*.pptx
+hotel_knowledge/**/*.xlsx
+
+# Keep .gitkeep files to preserve directory structure
+!hotel_knowledge/**/.gitkeep
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+
+# Model cache
+.transformers/
+model_cache/
+

@@ -22,3 +22,33 @@
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# Python / RAG Backend
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+**/venv/
+**/env/
+**/.venv/
+**/ENV/
+Hotel_Service_Project/**/.env
+**/chroma_db/
+**/vector_store/
+**/*.db
+**/hotel_knowledge/**/*.pdf
+**/hotel_knowledge/**/*.docx
+**/hotel_knowledge/**/*.doc
+!**/hotel_knowledge/**/.gitkeep
+
+# Frontend Build
+frontend/build/
+frontend/dist/
+frontend/.env.local
+frontend/.env.*.local
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
