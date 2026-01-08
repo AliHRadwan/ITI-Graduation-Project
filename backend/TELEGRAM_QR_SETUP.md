@@ -69,5 +69,5 @@ Check the response `deep_link` field - it should start with `https://t.me/`.
 - **Solution:** Make sure `TELEGRAM_BOT_USERNAME` is set in `.env`
 
 **Issue:** Bot doesn't respond to `/start` command
-- **Solution:** Check n8n workflow "Check for QR Start Command" IF node is configured correctly
+- **Solution:** Check n8n workflow "Check for QR Start Command" IF node is configured correctly.
 
