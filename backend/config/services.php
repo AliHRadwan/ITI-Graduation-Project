@@ -35,4 +35,9 @@ return [
         ],
     ],
 
+    'rag' => [
+        'api_url' => env('RAG_API_URL', 'http://localhost:8000'),
+        'knowledge_path' => env('RAG_KNOWLEDGE_PATH', 'C:\hotel concierg\ITI-Graduation-Project\Hotel_Service_Project\hotel-rag-backend\hotel_knowledge'),
+    ],
+
 ];

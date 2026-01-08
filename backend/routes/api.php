@@ -75,6 +75,16 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/dashboard/reports/tickets', [DashboardController::class, 'getTicketReports']);
     Route::get('/dashboard/reports/sla', [DashboardController::class, 'getSLAReports']);
     Route::get('/search', [SearchController::class, 'search']);
+
+    // Knowledge Base Management (Admin/Manager only)
+    Route::prefix('knowledge-documents')->group(function () {
+        Route::get('/', [App\Http\Controllers\Api\KnowledgeDocumentController::class, 'index']);
+        Route::get('/{id}', [App\Http\Controllers\Api\KnowledgeDocumentController::class, 'show']);
+        Route::post('/', [App\Http\Controllers\Api\KnowledgeDocumentController::class, 'store']);
+        Route::delete('/{id}', [App\Http\Controllers\Api\KnowledgeDocumentController::class, 'destroy']);
+        Route::post('/{id}/reprocess', [App\Http\Controllers\Api\KnowledgeDocumentController::class, 'reprocess']);
+        Route::get('/test/connection', [App\Http\Controllers\Api\KnowledgeDocumentController::class, 'testConnection']);
+    });
 });
 
 

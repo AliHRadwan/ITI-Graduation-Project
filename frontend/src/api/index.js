@@ -7,4 +7,5 @@ export { roomsAPI } from './rooms';
 export { staffAPI } from './staff';
 export { departmentsAPI } from './departments';
 export { guestsAPI } from './guests';
+export { knowledgeAPI } from './knowledge';
 

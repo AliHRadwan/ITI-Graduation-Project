@@ -1,0 +1,2 @@
+"""Hotel RAG Backend Application."""
+
