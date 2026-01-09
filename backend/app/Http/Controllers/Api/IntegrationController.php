@@ -72,17 +72,17 @@ class IntegrationController extends Controller
             if ($request->user_metadata) {
                 $metadata['user_metadata'] = $request->user_metadata;
             }
-            
+
             // Update conversation with room_id if provided (from QR scan)
             $updateData = [
                 'last_seen_at' => now(),
                 'metadata' => $metadata,
             ];
-            
+
             if ($request->room_id && !$conversation->room_id) {
                 $updateData['room_id'] = $request->room_id;
             }
-            
+
             $conversation->update($updateData);
 
             // Get room info if conversation is linked to a room
@@ -134,7 +134,7 @@ class IntegrationController extends Controller
             // Get open tickets if requested
             $openTickets = [];
             $openTicketsCount = 0;
-            
+
             if ($includeTickets) {
                 $openTickets = Ticket::where('conversation_id', $conversationId)
                     ->whereIn('status', ['open', 'in_progress'])
@@ -190,11 +190,14 @@ class IntegrationController extends Controller
         }
 
         try {
+            // 👇 Get only the valid data safely
+            $data = $validator->validated();
+
             $message = Message::create([
                 'conversation_id' => $conversationId,
-                'role' => $request->role,
-                'content' => $request->content,
-                'extracted_entities' => $request->extracted_entities,
+                'role' => $data['role'],
+                'content' => $data['content'], // This works now!
+                'extracted_entities' => $data['extracted_entities'] ?? null,
                 'created_at' => now(),
             ]);
 
@@ -239,13 +242,13 @@ class IntegrationController extends Controller
 
             // 0️⃣ Validate and get room_id (explicit from request or fallback from conversation)
             $roomId = $request->room_id;
-            
+
             // Fallback: Get room_id from conversation if not provided
             if (!$roomId) {
                 $conversation = Conversation::findOrFail($request->conversation_id);
                 $roomId = $conversation->room_id;
             }
-            
+
             // Validate room_id exists (guest must scan QR code first)
             if (!$roomId) {
                 DB::rollBack();
@@ -255,7 +258,7 @@ class IntegrationController extends Controller
                     'hint' => 'Ask the guest to scan the QR code in their room.'
                 ], 422);
             }
-            
+
             // Verify room exists and is valid
             $room = Room::findOrFail($roomId);
 
@@ -271,20 +274,20 @@ class IntegrationController extends Controller
 
             // 2️⃣ Find least-busy staff in the department (Round-Robin)
             $staffUserId = null;
-            
+
             if ($departmentId) {
                 $leastBusyMembership = \App\Models\StaffMembership::where('department_id', $departmentId)
-                    ->whereHas('staffUser', function($q) {
+                    ->whereHas('staffUser', function ($q) {
                         $q->where('status', 'active'); // Only active staff
                     })
                     ->with('staffUser')
                     ->get()
-                    ->map(function($membership) {
+                    ->map(function ($membership) {
                         // Count open tickets for each staff member
                         $openTickets = \App\Models\Ticket::where('actor_staff_user_id', $membership->staff_user_id)
                             ->whereIn('status', ['new', 'doing'])
                             ->count();
-                        
+
                         $membership->open_ticket_count = $openTickets;
                         return $membership;
                     })
@@ -309,10 +312,10 @@ class IntegrationController extends Controller
             ]);
 
             // 4️⃣ Log ticket creation event
-            $eventDescription = $request->is_emergency 
-                ? 'Emergency ticket created via AI agent' 
+            $eventDescription = $request->is_emergency
+                ? 'Emergency ticket created via AI agent'
                 : 'Ticket created via AI agent';
-            
+
             if ($staffUserId) {
                 $eventDescription .= ' and auto-assigned via round-robin';
             }
@@ -379,7 +382,7 @@ class IntegrationController extends Controller
 
         try {
             $conversation = Conversation::findOrFail($conversationId);
-            
+
             $conversation->update([
                 'status' => 'handoff',
             ]);
@@ -416,7 +419,7 @@ class IntegrationController extends Controller
     {
         try {
             $conversation = Conversation::findOrFail($conversationId);
-            
+
             $metadata = is_array($conversation->metadata) ? $conversation->metadata : [];
             $chatId = $metadata['chat_id'] ?? null;
 
@@ -488,4 +491,3 @@ class IntegrationController extends Controller
         }
     }
 }
-
