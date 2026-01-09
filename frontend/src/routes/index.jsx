@@ -17,6 +17,7 @@ import ConversationView from '@/features/conversations/ConversationView';
 import RoomList from '@/features/rooms/RoomList';
 import StaffList from '@/features/staff/StaffList';
 import DepartmentList from '@/features/staff/DepartmentList';
+import KnowledgeBaseList from '@/features/knowledge/KnowledgeBaseList';
 
 // Staff Layout & Pages
 import StaffLayout from '@/components/layout/StaffLayout';
@@ -80,6 +81,10 @@ const router = createBrowserRouter([
       {
         path: 'staff/departments',
         element: <DepartmentList />,
+      },
+      {
+        path: 'knowledge-base',
+        element: <KnowledgeBaseList />,
       },
     ],
   },

@@ -9,6 +9,7 @@ const Select = forwardRef(
       options = [],
       className = '',
       containerClassName = '',
+      children,
       ...props
     },
     ref
@@ -32,7 +33,7 @@ const Select = forwardRef(
           `}
           {...props}
         >
-          {options.map((option) => (
+          {children || options.map((option) => (
             <option key={option.value} value={option.value}>
               {option.label}
             </option>

@@ -28,7 +28,7 @@ class QrTokenService
         return [
             'qr_token' => $qrToken,
             'plain_token' => $token,
-            'deep_link' => config('app.url') . '/api/qr/resolve/' . $token,
+            'deep_link' => 'https://t.me/' . config('telegram.bot_username') . '?start=' . $token,
         ];
     }
 

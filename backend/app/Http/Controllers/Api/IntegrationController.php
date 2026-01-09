@@ -7,6 +7,7 @@ use App\Models\GuestIdentity;
 use App\Models\Conversation;
 use App\Models\Message;
 use App\Models\Ticket;
+use App\Models\Room;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
@@ -23,6 +24,7 @@ class IntegrationController extends Controller
             'channel_type' => 'required|string',
             'channel_user_id' => 'required|string',
             'chat_id' => 'required|string',
+            'room_id' => 'nullable|uuid|exists:rooms,id',
             'preferred_language' => 'nullable|string|max:10',
             'user_metadata' => 'nullable|array',
         ]);
@@ -71,10 +73,17 @@ class IntegrationController extends Controller
                 $metadata['user_metadata'] = $request->user_metadata;
             }
             
-            $conversation->update([
+            // Update conversation with room_id if provided (from QR scan)
+            $updateData = [
                 'last_seen_at' => now(),
                 'metadata' => $metadata,
-            ]);
+            ];
+            
+            if ($request->room_id && !$conversation->room_id) {
+                $updateData['room_id'] = $request->room_id;
+            }
+            
+            $conversation->update($updateData);
 
             // Get room info if conversation is linked to a room
             $room = $conversation->room;
@@ -168,7 +177,7 @@ class IntegrationController extends Controller
     public function logMessage(Request $request, $conversationId)
     {
         $validator = Validator::make($request->all(), [
-            'role' => 'required|in:guest,assistant',
+            'role' => 'required|in:guest,agent,staff,system',
             'content' => 'required|string',
             'extracted_entities' => 'nullable|array',
         ]);
@@ -204,6 +213,7 @@ class IntegrationController extends Controller
     /**
      * Create a ticket from n8n
      * Used for service requests, complaints, emergencies
+     * Auto-assigns to department and least-busy staff using round-robin
      */
     public function createTicket(Request $request)
     {
@@ -227,34 +237,117 @@ class IntegrationController extends Controller
         try {
             DB::beginTransaction();
 
-            // Create ticket
+            // 0️⃣ Validate and get room_id (explicit from request or fallback from conversation)
+            $roomId = $request->room_id;
+            
+            // Fallback: Get room_id from conversation if not provided
+            if (!$roomId) {
+                $conversation = Conversation::findOrFail($request->conversation_id);
+                $roomId = $conversation->room_id;
+            }
+            
+            // Validate room_id exists (guest must scan QR code first)
+            if (!$roomId) {
+                DB::rollBack();
+                return response()->json([
+                    'error' => 'Room information required',
+                    'message' => 'Cannot create ticket without room information. Guest must scan the room QR code first to link their conversation to a room.',
+                    'hint' => 'Ask the guest to scan the QR code in their room.'
+                ], 422);
+            }
+            
+            // Verify room exists and is valid
+            $room = Room::findOrFail($roomId);
+
+            // 1️⃣ Find department based on category using routing rules
+            $departmentId = null;
+            $routingRule = \App\Models\RoutingRule::where('match_category', $request->category)
+                ->where('is_active', true)
+                ->first();
+
+            if ($routingRule) {
+                $departmentId = $routingRule->department_id;
+            }
+
+            // 2️⃣ Find least-busy staff in the department (Round-Robin)
+            $staffUserId = null;
+            
+            if ($departmentId) {
+                $leastBusyMembership = \App\Models\StaffMembership::where('department_id', $departmentId)
+                    ->whereHas('staffUser', function($q) {
+                        $q->where('status', 'active'); // Only active staff
+                    })
+                    ->with('staffUser')
+                    ->get()
+                    ->map(function($membership) {
+                        // Count open tickets for each staff member
+                        $openTickets = \App\Models\Ticket::where('actor_staff_user_id', $membership->staff_user_id)
+                            ->whereIn('status', ['new', 'doing'])
+                            ->count();
+                        
+                        $membership->open_ticket_count = $openTickets;
+                        return $membership;
+                    })
+                    ->sortBy('open_ticket_count')
+                    ->first();
+
+                if ($leastBusyMembership) {
+                    $staffUserId = $leastBusyMembership->staff_user_id;
+                }
+            }
+
+            // 3️⃣ Create ticket with auto-assignment
             $ticket = Ticket::create([
                 'conversation_id' => $request->conversation_id,
-                'room_id' => $request->room_id,
+                'room_id' => $roomId, // Validated room_id from request or conversation
+                'department_id' => $departmentId,
+                'actor_staff_user_id' => $staffUserId,
                 'category' => $request->category,
                 'priority' => $request->priority,
                 'description' => $request->description,
-                'status' => 'open',
+                'status' => 'new',
             ]);
 
-            // Log ticket creation event
+            // 4️⃣ Log ticket creation event
+            $eventDescription = $request->is_emergency 
+                ? 'Emergency ticket created via AI agent' 
+                : 'Ticket created via AI agent';
+            
+            if ($staffUserId) {
+                $eventDescription .= ' and auto-assigned via round-robin';
+            }
+
             $ticket->events()->create([
                 'event_type' => 'created',
-                'description' => $request->is_emergency ? 'Emergency ticket created via AI agent' : 'Ticket created via AI agent',
+                'description' => $eventDescription,
                 'metadata' => [
                     'source' => $request->source ?? 'n8n_agent',
                     'is_emergency' => $request->is_emergency ?? false,
+                    'auto_assigned' => $staffUserId !== null,
+                    'assignment_method' => 'round_robin',
                 ],
             ]);
 
-            // TODO: Send notification to appropriate department/staff
-            // This would integrate with your notification system
+            // 5️⃣ Log assignment event if staff was assigned
+            if ($staffUserId) {
+                $ticket->events()->create([
+                    'event_type' => 'assigned',
+                    'description' => 'Auto-assigned to staff member via round-robin algorithm',
+                    'metadata' => [
+                        'staff_user_id' => $staffUserId,
+                        'department_id' => $departmentId,
+                    ],
+                ]);
+            }
 
             DB::commit();
 
             return response()->json([
                 'ticket_id' => $ticket->id,
                 'status' => $ticket->status,
+                'department_id' => $departmentId,
+                'assigned_staff_id' => $staffUserId,
+                'auto_assigned' => $staffUserId !== null,
                 'notification_sent' => false, // Update when notification system is integrated
             ], 201);
         } catch (\Exception $e) {
