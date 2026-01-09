@@ -4,8 +4,17 @@ export const staffAPI = {
   // Staff Users
   getUsers: async (params) => {
     const response = await apiClient.get('/staff/users', { params });
-    // Backend returns { users: { data: [...] } } or similar - extract the data array
-    return response.data.users?.data || response.data.data || response.data;
+    const payload = response.data || {};
+    if (payload.items) {
+      return {
+        items: payload.items,
+        pagination: payload.pagination || null,
+      };
+    }
+    return {
+      items: payload.users?.data || payload.data || payload || [],
+      pagination: payload.users || null,
+    };
   },
 
   getUser: async (id) => {
@@ -81,4 +90,3 @@ export const staffAPI = {
     return response.data;
   },
 };
-

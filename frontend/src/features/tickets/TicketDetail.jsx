@@ -14,6 +14,13 @@ const statusColors = {
   canceled: 'danger',
 };
 
+const priorityLabels = {
+  low: 'Low',
+  med: 'Medium',
+  high: 'High',
+  urgent: 'Urgent',
+};
+
 export default function TicketDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -31,7 +38,7 @@ export default function TicketDetail() {
     queryFn: staffAPI.getUsers,
   });
 
-  const staff = Array.isArray(staffData) ? staffData : staffData?.data || [];
+  const staff = staffData?.items || [];
 
   const updateStatusMutation = useMutation({
     mutationFn: (status) => ticketsAPI.updateStatus(id, status),
@@ -110,14 +117,11 @@ export default function TicketDetail() {
                   </div>
                   <div>
                     <label className="text-sm font-medium text-gray-700">Priority</label>
-                    <p className="mt-1 text-gray-900 capitalize">{ticket.priority}</p>
+                    <p className="mt-1 text-gray-900">
+                      {priorityLabels[ticket.priority] || ticket.priority}
+                    </p>
                   </div>
                 </div>
-                {ticket.is_emergency && (
-                  <div className="p-3 bg-red-50 border border-red-200 rounded-md">
-                    <p className="text-sm font-medium text-red-800">🚨 Emergency Ticket</p>
-                  </div>
-                )}
               </div>
             </CardContent>
           </Card>
@@ -176,7 +180,7 @@ export default function TicketDetail() {
               <div className="space-y-2">
                 <div>
                   <label className="text-sm font-medium text-gray-700">Room Number</label>
-                  <p className="text-gray-900">{ticket.room?.room_number || 'N/A'}</p>
+                  <p className="text-gray-900">{ticket.room?.number || 'N/A'}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-gray-700">Room Type</label>
@@ -195,10 +199,10 @@ export default function TicketDetail() {
               <CardTitle>Assigned Staff</CardTitle>
             </CardHeader>
             <CardContent>
-              {ticket.assigned_staff ? (
+              {ticket.staff_user ? (
                 <div className="space-y-2">
-                  <p className="font-medium">{ticket.assigned_staff.name}</p>
-                  <p className="text-sm text-gray-600">{ticket.assigned_staff.email}</p>
+                  <p className="font-medium">{ticket.staff_user.name}</p>
+                  <p className="text-sm text-gray-600">{ticket.staff_user.email}</p>
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -231,4 +235,3 @@ export default function TicketDetail() {
     </div>
   );
 }
-

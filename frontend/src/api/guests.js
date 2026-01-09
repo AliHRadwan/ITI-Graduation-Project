@@ -3,8 +3,8 @@ import apiClient from './client';
 export const guestsAPI = {
   getGuests: async (params) => {
     const response = await apiClient.get('/guests', { params });
-    // Backend returns { guests: { data: [...] } } - extract the data array
-    return response.data.guests?.data || response.data.data || response.data;
+    // Backend returns { data: { items: [...] } } for paginated responses
+    return response.data.data?.items || response.data.items || response.data;
   },
 
   getGuest: async (id) => {
@@ -12,4 +12,3 @@ export const guestsAPI = {
     return response.data;
   },
 };
-

@@ -8,8 +8,7 @@ import { ArrowLeftIcon, PaperAirplaneIcon } from '@heroicons/react/24/outline';
 import { format } from 'date-fns';
 
 const roleColors = {
-  guest: 'primary',
-  assistant: 'info',
+  user: 'primary',
   staff: 'success',
 };
 
@@ -26,40 +25,46 @@ export default function ConversationView() {
     refetchInterval: 5000, // Refresh every 5 seconds
   });
 
-  const { data: messagesData } = useQuery({
+  const { data: messagesData, isLoading: isMessagesLoading } = useQuery({
     queryKey: ['messages', id],
     queryFn: () => conversationsAPI.getMessages(id),
     refetchInterval: 5000, // Refresh every 5 seconds
   });
 
-  const messages = Array.isArray(messagesData) ? messagesData : messagesData?.data || [];
+  const messages = Array.isArray(messagesData) ? messagesData : [];
+  const normalizedStatus = conversation?.status ? conversation.status.toUpperCase() : '';
 
   const sendMessageMutation = useMutation({
     mutationFn: (data) => conversationsAPI.sendMessage(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries(['messages', id]);
+    onSuccess: (response) => {
+      const newMessage = response?.data || response;
+      queryClient.setQueryData(['messages', id], (old) => {
+        const existing = Array.isArray(old) ? old : [];
+        if (newMessage && newMessage.id) {
+          return [...existing, newMessage];
+        }
+        return existing;
+      });
       setMessageText('');
       toast.success('Message sent');
     },
     onError: () => toast.error('Failed to send message'),
   });
 
-  const handoffMutation = useMutation({
-    mutationFn: (data) => conversationsAPI.handoff(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries(['conversation', id]);
-      toast.success('Conversation handed off to staff');
+  const statusMutation = useMutation({
+    mutationFn: (status) => conversationsAPI.updateStatus(id, status),
+    onSuccess: (response) => {
+      const updated = response?.data || response;
+      if (updated) {
+        queryClient.setQueryData(['conversation', id], updated);
+      } else {
+        queryClient.invalidateQueries(['conversation', id]);
+      }
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
+      console.debug('Conversation status updated', response);
+      toast.success('Status updated');
     },
-    onError: () => toast.error('Failed to handoff conversation'),
-  });
-
-  const closeConversationMutation = useMutation({
-    mutationFn: () => conversationsAPI.close(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries(['conversation', id]);
-      toast.success('Conversation closed');
-    },
-    onError: () => toast.error('Failed to close conversation'),
+    onError: () => toast.error('Failed to update status'),
   });
 
   useEffect(() => {
@@ -72,13 +77,6 @@ export default function ConversationView() {
     sendMessageMutation.mutate({
       role: 'staff',
       content: messageText,
-    });
-  };
-
-  const handleHandoff = () => {
-    handoffMutation.mutate({
-      reason: 'Staff manually requested handoff',
-      priority: 'medium',
     });
   };
 
@@ -108,9 +106,7 @@ export default function ConversationView() {
           </Button>
           <div>
             <h1 className="text-2xl font-bold text-gray-900">
-              {conversation.guest_identity?.metadata?.first_name ||
-                conversation.guest_identity?.metadata?.username ||
-                'Guest Conversation'}
+              {conversation.participant?.name || 'Guest Conversation'}
             </h1>
             <p className="text-gray-600">
               Room: {conversation.room?.room_number || 'Not assigned'}
@@ -118,23 +114,41 @@ export default function ConversationView() {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <Badge variant={conversation.status === 'open' ? 'success' : 'warning'}>
-            {conversation.status}
+          <Badge
+            variant={
+              normalizedStatus === 'OPEN'
+                ? 'success'
+                : normalizedStatus === 'HANDOFF'
+                ? 'warning'
+                : 'default'
+            }
+          >
+            {normalizedStatus || 'N/A'}
           </Badge>
-          {conversation.status === 'open' && (
-            <Button size="sm" variant="secondary" onClick={handleHandoff}>
-              Request Handoff
-            </Button>
-          )}
-          {conversation.status !== 'closed' && (
-            <Button
-              size="sm"
-              variant="danger"
-              onClick={() => closeConversationMutation.mutate()}
-            >
-              Close
-            </Button>
-          )}
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={() => statusMutation.mutate('OPEN')}
+            disabled={normalizedStatus === 'OPEN'}
+          >
+            Open
+          </Button>
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={() => statusMutation.mutate('HANDOFF')}
+            disabled={normalizedStatus === 'HANDOFF'}
+          >
+            Handoff
+          </Button>
+          <Button
+            size="sm"
+            variant="danger"
+            onClick={() => statusMutation.mutate('CLOSED')}
+            disabled={normalizedStatus === 'CLOSED'}
+          >
+            Close
+          </Button>
         </div>
       </div>
 
@@ -145,39 +159,43 @@ export default function ConversationView() {
             <div className="h-[600px] flex flex-col">
               {/* Message List */}
               <div className="flex-1 overflow-y-auto p-6 space-y-4">
-                {messages?.map((message) => (
-                  <div
-                    key={message.id}
-                    className={`flex ${
-                      message.role === 'guest' ? 'justify-start' : 'justify-end'
-                    }`}
-                  >
-                    <div
-                      className={`max-w-[70%] rounded-lg p-4 ${
-                        message.role === 'guest'
-                          ? 'bg-gray-100'
-                          : message.role === 'staff'
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-green-100'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2 mb-1">
-                        <Badge variant={roleColors[message.role]} size="sm">
-                          {message.role}
-                        </Badge>
-                        <span className="text-xs opacity-70">
-                          {message.created_at ? format(new Date(message.created_at), 'HH:mm') : 'N/A'}
-                        </span>
-                      </div>
-                      <p className="text-sm">{message.content}</p>
-                    </div>
+                {isMessagesLoading ? (
+                  <div className="flex items-center justify-center h-full">
+                    <Spinner size="lg" />
                   </div>
-                ))}
+                ) : (
+                  messages?.map((message) => {
+                    const senderType = message.sender_type || message.role;
+                    const isUser = senderType === 'user' || senderType === 'guest';
+                    return (
+                      <div
+                        key={message.id}
+                        className={`flex ${isUser ? 'justify-start' : 'justify-end'}`}
+                      >
+                        <div
+                          className={`max-w-[70%] rounded-lg p-4 ${
+                            isUser ? 'bg-gray-100' : 'bg-blue-600 text-white'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2 mb-1">
+                            <Badge variant={roleColors[senderType] || 'info'} size="sm">
+                              {senderType}
+                            </Badge>
+                            <span className="text-xs opacity-70">
+                              {message.created_at ? format(new Date(message.created_at), 'HH:mm') : 'N/A'}
+                            </span>
+                          </div>
+                          <p className="text-sm">{message.body || message.content}</p>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
                 <div ref={messagesEndRef} />
               </div>
 
               {/* Message Input */}
-              {conversation.status !== 'closed' && (
+              {normalizedStatus !== 'CLOSED' && (
                 <div className="border-t border-gray-200 p-4">
                   <div className="flex gap-2">
                     <Textarea
@@ -214,26 +232,23 @@ export default function ConversationView() {
               <div>
                 <label className="text-gray-600">Name</label>
                 <p className="font-medium">
-                  {conversation.guest_identity?.metadata?.first_name}{' '}
-                  {conversation.guest_identity?.metadata?.last_name}
+                  {conversation.participant?.name || 'Guest'}
                 </p>
               </div>
               <div>
-                <label className="text-gray-600">Username</label>
-                <p className="font-medium">
-                  {conversation.guest_identity?.metadata?.username || 'N/A'}
-                </p>
+                <label className="text-gray-600">Guest ID</label>
+                <p className="font-medium">{conversation.guest?.channel_user_id || 'N/A'}</p>
               </div>
               <div>
                 <label className="text-gray-600">Channel</label>
                 <p className="font-medium capitalize">
-                  {conversation.guest_identity?.channel_type}
+                  {conversation.guest?.channel_type || 'N/A'}
                 </p>
               </div>
               <div>
                 <label className="text-gray-600">Language</label>
                 <p className="font-medium">
-                  {conversation.guest_identity?.preferred_language || 'en'}
+                  {conversation.guest?.preferred_language || 'en'}
                 </p>
               </div>
             </div>
@@ -248,12 +263,8 @@ export default function ConversationView() {
                   <p className="font-medium">{conversation.room.room_number}</p>
                 </div>
                 <div>
-                  <label className="text-gray-600">Type</label>
-                  <p className="font-medium">{conversation.room.room_type}</p>
-                </div>
-                <div>
-                  <label className="text-gray-600">Floor</label>
-                  <p className="font-medium">{conversation.room.floor}</p>
+                  <label className="text-gray-600">Status</label>
+                  <p className="font-medium">{conversation.room.status || 'N/A'}</p>
                 </div>
               </div>
             </Card>
@@ -263,4 +274,3 @@ export default function ConversationView() {
     </div>
   );
 }
-

@@ -1,31 +1,50 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { conversationsAPI } from '@/api';
-import { Badge, Spinner, EmptyState, Tabs, TabList, TabButton, TabPanels, TabPanel } from '@/components/ui';
+import { Badge, Spinner, EmptyState, Tabs, TabList, TabButton, TabPanels, TabPanel, Pagination } from '@/components/ui';
 import { ChatBubbleLeftRightIcon } from '@heroicons/react/24/outline';
 import { format } from 'date-fns';
 
 const statusColors = {
-  open: 'success',
-  handoff: 'warning',
-  closed: 'default',
+  OPEN: 'success',
+  HANDOFF: 'warning',
+  CLOSED: 'default',
 };
 
 export default function ConversationList() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState(0);
+  const [page, setPage] = useState(1);
+  const perPage = 3;
 
-  const statuses = ['open', 'handoff', 'closed'];
+  const statuses = [null, 'OPEN', 'HANDOFF', 'CLOSED'];
   const status = statuses[activeTab];
+  const statusLabel = status || 'ALL';
 
   const { data, isLoading } = useQuery({
-    queryKey: ['conversations', status],
-    queryFn: () => conversationsAPI.getConversations({ status }),
+    queryKey: ['conversations', statusLabel, page],
+    queryFn: () =>
+      conversationsAPI.getConversations(
+        status ? { status, page, per_page: perPage } : { page, per_page: perPage }
+      ),
     refetchInterval: 10000, // Refresh every 10 seconds
   });
 
-  const conversations = Array.isArray(data) ? data : data?.data || [];
+  const conversations = data?.items || [];
+  const pagination = data?.pagination || null;
+
+  useEffect(() => {
+    setPage(1);
+  }, [activeTab]);
+
+  const sortedConversations = useMemo(() => {
+    return [...conversations].sort((a, b) => {
+      const aTime = new Date(a.updated_at || a.created_at || a.last_seen_at || a.started_at || 0).getTime();
+      const bTime = new Date(b.updated_at || b.created_at || b.last_seen_at || b.started_at || 0).getTime();
+      return bTime - aTime;
+    });
+  }, [conversations]);
 
   const renderConversations = (convos) => {
     if (isLoading) {
@@ -44,7 +63,7 @@ export default function ConversationList() {
         <EmptyState
           icon={ChatBubbleLeftRightIcon}
           title="No conversations"
-          description={`No ${status} conversations at the moment`}
+          description={`No ${statusLabel} conversations at the moment`}
         />
       );
     }
@@ -61,20 +80,23 @@ export default function ConversationList() {
               <div className="flex-1">
                 <div className="flex items-center gap-2">
                   <h3 className="font-medium text-gray-900">
-                    {conversation.guest_identity?.metadata?.first_name ||
-                      conversation.guest_identity?.metadata?.username ||
-                      'Guest'}
+                    {conversation.participant?.name || 'Guest'}
                   </h3>
-                  <Badge variant={statusColors[conversation.status]} size="sm">
-                    {conversation.status}
-                  </Badge>
+                  {(() => {
+                    const normalizedStatus = conversation.status?.toUpperCase();
+                    return (
+                      <Badge variant={statusColors[normalizedStatus]} size="sm">
+                        {normalizedStatus || 'N/A'}
+                      </Badge>
+                    );
+                  })()}
                 </div>
                 <p className="text-sm text-gray-600 mt-1">
                   Room: {conversation.room?.room_number || 'Not assigned'}
                 </p>
-                {conversation.last_message && (
+                {conversation.last_message?.body && (
                   <p className="text-sm text-gray-500 mt-2 line-clamp-2">
-                    {conversation.last_message.content}
+                    {conversation.last_message.body}
                   </p>
                 )}
               </div>
@@ -98,20 +120,32 @@ export default function ConversationList() {
       </div>
 
       <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-        <Tabs onChange={setActiveTab}>
+        <Tabs selectedIndex={activeTab} onChange={setActiveTab}>
           <TabList>
-            <TabButton>Active ({conversations?.length || 0})</TabButton>
+            <TabButton>All ({conversations?.length || 0})</TabButton>
+            <TabButton>Open</TabButton>
             <TabButton>Handoff</TabButton>
             <TabButton>Closed</TabButton>
           </TabList>
           <TabPanels>
-            <TabPanel>{renderConversations(conversations)}</TabPanel>
-            <TabPanel>{renderConversations(conversations)}</TabPanel>
-            <TabPanel>{renderConversations(conversations)}</TabPanel>
+            <TabPanel>{renderConversations(sortedConversations)}</TabPanel>
+            <TabPanel>{renderConversations(sortedConversations)}</TabPanel>
+            <TabPanel>{renderConversations(sortedConversations)}</TabPanel>
+            <TabPanel>{renderConversations(sortedConversations)}</TabPanel>
           </TabPanels>
         </Tabs>
       </div>
+
+      {pagination?.last_page > 1 && (
+        <Pagination
+          currentPage={pagination.current_page || 1}
+          totalPages={pagination.last_page || 1}
+          onPageChange={(nextPage) => {
+            if (nextPage < 1 || nextPage > (pagination.last_page || 1)) return;
+            setPage(nextPage);
+          }}
+        />
+      )}
     </div>
   );
 }
-

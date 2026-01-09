@@ -3,8 +3,22 @@ import apiClient from './client';
 export const roomsAPI = {
   getRooms: async (params) => {
     const response = await apiClient.get('/rooms', { params });
-    // Backend returns { rooms: { data: [...] } } - extract the data array
-    return response.data.rooms?.data || response.data.data || response.data;
+    const payload = response.data || {};
+    if (payload.data && payload.meta) {
+      return {
+        items: payload.data,
+        pagination: {
+          current_page: payload.meta.current_page,
+          per_page: payload.meta.per_page,
+          total: payload.meta.total,
+          last_page: payload.meta.last_page,
+        },
+      };
+    }
+    return {
+      items: payload.items || payload.data || payload || [],
+      pagination: payload.pagination || null,
+    };
   },
 
   getRoom: async (id) => {
@@ -44,4 +58,3 @@ export const roomsAPI = {
     return response.data;
   },
 };
-

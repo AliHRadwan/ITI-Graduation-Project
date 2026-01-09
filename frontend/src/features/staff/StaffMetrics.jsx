@@ -13,7 +13,7 @@ export default function StaffMetrics() {
     queryFn: () => ticketsAPI.getTickets({ assigned_to: user?.id }),
   });
 
-  const tickets = Array.isArray(data) ? data : data?.data || [];
+  const tickets = data?.items || [];
 
   if (isLoading) {
     return (
@@ -84,4 +84,3 @@ export default function StaffMetrics() {
     </div>
   );
 }
-

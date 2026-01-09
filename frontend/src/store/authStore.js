@@ -49,9 +49,10 @@ const useAuthStore = create((set) => ({
     set({ isLoading: true });
     try {
       const data = await authAPI.me();
-      localStorage.setItem('user', JSON.stringify(data));
-      set({ user: data, isLoading: false });
-      return data;
+      const user = data.user || data;
+      localStorage.setItem('user', JSON.stringify(user));
+      set({ user, isLoading: false });
+      return user;
     } catch (error) {
       set({ isLoading: false });
       throw error;
@@ -62,4 +63,3 @@ const useAuthStore = create((set) => ({
 }));
 
 export default useAuthStore;
-

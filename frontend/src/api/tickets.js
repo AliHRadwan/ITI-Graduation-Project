@@ -3,8 +3,17 @@ import apiClient from './client';
 export const ticketsAPI = {
   getTickets: async (params) => {
     const response = await apiClient.get('/tickets', { params });
-    // Backend returns { tickets: { data: [...] } } - extract the data array
-    return response.data.tickets?.data || response.data.data || response.data;
+    const payload = response.data || {};
+    if (payload.items) {
+      return {
+        items: payload.items,
+        pagination: payload.pagination || null,
+      };
+    }
+    return {
+      items: payload.tickets?.data || payload.data || payload || [],
+      pagination: payload.tickets || null,
+    };
   },
 
   getTicket: async (id) => {
@@ -29,8 +38,7 @@ export const ticketsAPI = {
   },
 
   assignStaff: async (id, staffId) => {
-    const response = await apiClient.post(`/tickets/${id}/assign`, { staff_user_id: staffId });
+    const response = await apiClient.post(`/tickets/${id}/assign`, { actor_staff_user_id: staffId });
     return response.data;
   },
 };
-
