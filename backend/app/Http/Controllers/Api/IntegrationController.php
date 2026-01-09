@@ -473,7 +473,8 @@ class IntegrationController extends Controller
             }
 
             // Mark token as used
-            $qrToken->update(['last_used_at' => now()]);
+            // TODO: Add last_used_at column to database, then uncomment this:
+            // $qrToken->update(['last_used_at' => now()]);
 
             return response()->json([
                 'room_id' => $qrToken->room_id,
