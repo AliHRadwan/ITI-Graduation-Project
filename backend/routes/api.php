@@ -58,6 +58,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // 5) Conversations
     Route::get('/conversations', [ConversationController::class, 'index']);
     Route::get('/conversations/{conversation}', [ConversationController::class, 'show']);
+    Route::patch('/conversations/{conversation}/status', [ConversationController::class, 'updateStatus']);
     Route::post('/conversations/{conversation}/handoff', [ConversationController::class, 'handoff']);
     Route::post('/conversations/{conversation}/close', [ConversationController::class, 'close']);
 

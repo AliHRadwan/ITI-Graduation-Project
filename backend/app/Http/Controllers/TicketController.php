@@ -8,13 +8,67 @@ use App\Models\TicketEvent;
 
 class TicketController extends Controller
 {
-    public function getTickets()
+    public function getTickets(Request $request)
     {
-        $tickets = Ticket::with('department', 'room', 'conversation', 'staffUser')
-            ->latest()
-            ->paginate(10);
+        $query = Ticket::with(['department', 'room', 'conversation', 'staffUser']);
 
-        return response()->json(['tickets' => $tickets], 200);
+        if ($request->filled('status')) {
+            $query->where('status', strtolower($request->status));
+        }
+
+        if ($request->filled('priority')) {
+            $query->where('priority', strtolower($request->priority));
+        }
+
+        if ($request->filled('department_id')) {
+            $query->where('department_id', $request->department_id);
+        }
+
+        if ($request->filled('room_id')) {
+            $query->where('room_id', $request->room_id);
+        }
+
+        if ($request->filled('category')) {
+            $query->where('category', $request->category);
+        }
+
+        if ($request->filled('start_date') && $request->filled('end_date')) {
+            $query->whereBetween('created_at', [$request->start_date, $request->end_date]);
+        }
+
+        $tickets = $query
+            ->orderByDesc('updated_at')
+            ->orderByDesc('created_at')
+            ->paginate((int) $request->input('per_page', 3));
+
+        $items = collect($tickets->items())->map(fn ($ticket) => [
+            'id' => $ticket->id,
+            'category' => $ticket->category,
+            'status' => $ticket->status,
+            'priority' => $ticket->priority,
+            'description' => $ticket->description,
+            'created_at' => optional($ticket->created_at)->toISOString(),
+            'updated_at' => optional($ticket->updated_at)->toISOString(),
+            'room' => $ticket->room ? [
+                'id' => $ticket->room->id,
+                'number' => $ticket->room->room_number,
+            ] : null,
+            'department' => $ticket->department ? [
+                'id' => $ticket->department->id,
+                'name' => $ticket->department->name,
+            ] : null,
+            'conversation_id' => $ticket->conversation_id,
+        ]);
+
+        return response()->json([
+            'items' => $items,
+            'pagination' => [
+                'current_page' => $tickets->currentPage(),
+                'per_page' => $tickets->perPage(),
+                'total' => $tickets->total(),
+                'last_page' => $tickets->lastPage(),
+            ],
+        ], 200);
     }
 
     public function store(Request $request)
@@ -22,7 +76,7 @@ class TicketController extends Controller
         $validated = $request->validate([
             'room_id' => 'required|uuid|exists:rooms,id',
             'department_id' => 'required|uuid|exists:departments,id',
-            'conversation_id' => 'required|uuid|exists:conversations,id',
+            'conversation_id' => 'nullable|uuid|exists:conversations,id',
             'actor_staff_user_id' => 'sometimes|uuid|exists:staff_users,id',
             'category' => 'required|string|max:255',
             'status' => 'required|in:new,doing,done,canceled',
@@ -44,8 +98,32 @@ class TicketController extends Controller
 
     public function show(Ticket $ticket)
     {
+        $ticket->load(['department', 'room', 'conversation', 'staffUser']);
+
         return response()->json([
-            'ticket' => $ticket->load(['department', 'room', 'conversation', 'staffUser'])
+            'ticket' => [
+                'id' => $ticket->id,
+                'category' => $ticket->category,
+                'status' => $ticket->status,
+                'priority' => $ticket->priority,
+                'description' => $ticket->description,
+                'created_at' => optional($ticket->created_at)->toISOString(),
+                'updated_at' => optional($ticket->updated_at)->toISOString(),
+                'room' => $ticket->room ? [
+                    'id' => $ticket->room->id,
+                    'number' => $ticket->room->room_number,
+                ] : null,
+                'department' => $ticket->department ? [
+                    'id' => $ticket->department->id,
+                    'name' => $ticket->department->name,
+                ] : null,
+                'conversation_id' => $ticket->conversation_id,
+                'staff_user' => $ticket->staffUser ? [
+                    'id' => $ticket->staffUser->id,
+                    'name' => $ticket->staffUser->name,
+                    'email' => $ticket->staffUser->email,
+                ] : null,
+            ],
         ],200);
     }
 
@@ -138,7 +216,7 @@ class TicketController extends Controller
             'note' => 'sometimes|string|max:500',
         ]);
 
-        $ticket->update(['priority' => 'Urgent']);
+        $ticket->update(['priority' => 'urgent']);
 
         TicketEvent::create([
             'ticket_id' => $ticket->id,

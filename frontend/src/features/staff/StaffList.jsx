@@ -2,20 +2,26 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { staffAPI } from '@/api';
-import { Button, Badge, Table, TableHead, TableBody, TableRow, TableHeader, TableCell, Spinner, EmptyState } from '@/components/ui';
+import { Button, Badge, Table, TableHead, TableBody, TableRow, TableHeader, TableCell, Spinner, EmptyState, Pagination } from '@/components/ui';
 import { PlusIcon, UsersIcon } from '@heroicons/react/24/outline';
 import InviteStaffModal from './InviteStaffModal';
+import EditStaffModal from './EditStaffModal';
 
 export default function StaffList() {
   const queryClient = useQueryClient();
   const [showInviteModal, setShowInviteModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [page, setPage] = useState(1);
+  const perPage = 5;
 
   const { data, isLoading } = useQuery({
-    queryKey: ['staff-users'],
-    queryFn: staffAPI.getUsers,
+    queryKey: ['staff-users', page],
+    queryFn: () => staffAPI.getUsers({ page, per_page: perPage }),
   });
 
-  const staff = Array.isArray(data) ? data : data?.data || [];
+  const staff = data?.items || [];
+  const pagination = data?.pagination || null;
 
   const deactivateMutation = useMutation({
     mutationFn: (id) => staffAPI.deactivateUser(id),
@@ -34,6 +40,27 @@ export default function StaffList() {
     },
     onError: () => toast.error('Failed to activate staff member'),
   });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id) => staffAPI.deleteUser(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries(['staff-users']);
+      toast.success('Staff member deleted');
+    },
+    onError: () => toast.error('Failed to delete staff member'),
+  });
+
+  const handleEdit = (user) => {
+    setSelectedUser(user);
+    setShowEditModal(true);
+  };
+
+  const handleDelete = (user) => {
+    if (!user?.id) return;
+    const confirmed = window.confirm(`Delete "${user.name}"? This cannot be undone.`);
+    if (!confirmed) return;
+    deleteMutation.mutate(user.id);
+  };
 
   return (
     <div className="space-y-6">
@@ -74,6 +101,7 @@ export default function StaffList() {
                 <TableHeader>Name</TableHeader>
                 <TableHeader>Email</TableHeader>
                 <TableHeader>Role</TableHeader>
+                <TableHeader>Department</TableHeader>
                 <TableHeader>Status</TableHeader>
                 <TableHeader>Actions</TableHeader>
               </TableRow>
@@ -88,6 +116,7 @@ export default function StaffList() {
                       {member.role?.name || 'N/A'}
                     </Badge>
                   </TableCell>
+                  <TableCell>{member.department?.name || 'N/A'}</TableCell>
                   <TableCell>
                     <Badge
                       variant={member.is_active ? 'success' : 'danger'}
@@ -98,10 +127,17 @@ export default function StaffList() {
                   </TableCell>
                   <TableCell>
                     <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => handleEdit(member)}
+                      >
+                        Edit
+                      </Button>
                       {member.is_active ? (
                         <Button
                           size="sm"
-                          variant="danger"
+                          variant="secondary"
                           onClick={() => deactivateMutation.mutate(member.id)}
                         >
                           Deactivate
@@ -115,6 +151,13 @@ export default function StaffList() {
                           Activate
                         </Button>
                       )}
+                      <Button
+                        size="sm"
+                        variant="danger"
+                        onClick={() => handleDelete(member)}
+                      >
+                        Delete
+                      </Button>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -133,7 +176,31 @@ export default function StaffList() {
           queryClient.invalidateQueries(['staff-users']);
         }}
       />
+
+      <EditStaffModal
+        isOpen={showEditModal}
+        user={selectedUser}
+        onClose={() => {
+          setShowEditModal(false);
+          setSelectedUser(null);
+        }}
+        onSuccess={() => {
+          setShowEditModal(false);
+          setSelectedUser(null);
+          queryClient.invalidateQueries(['staff-users']);
+        }}
+      />
+
+      {pagination?.last_page > 1 && (
+        <Pagination
+          currentPage={pagination.current_page || 1}
+          totalPages={pagination.last_page || 1}
+          onPageChange={(nextPage) => {
+            if (nextPage < 1 || nextPage > (pagination.last_page || 1)) return;
+            setPage(nextPage);
+          }}
+        />
+      )}
     </div>
   );
 }
-

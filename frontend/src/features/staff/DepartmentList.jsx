@@ -2,20 +2,26 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { departmentsAPI } from '@/api';
-import { Button, Badge, Table, TableHead, TableBody, TableRow, TableHeader, TableCell, Spinner, EmptyState } from '@/components/ui';
+import { Button, Badge, Table, TableHead, TableBody, TableRow, TableHeader, TableCell, Spinner, EmptyState, Pagination } from '@/components/ui';
 import { PlusIcon, BuildingOfficeIcon } from '@heroicons/react/24/outline';
 import CreateDepartmentModal from './CreateDepartmentModal';
+import EditDepartmentModal from './EditDepartmentModal';
 
 export default function DepartmentList() {
   const queryClient = useQueryClient();
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [selectedDepartment, setSelectedDepartment] = useState(null);
+  const [page, setPage] = useState(1);
+  const perPage = 5;
 
   const { data, isLoading } = useQuery({
-    queryKey: ['departments'],
-    queryFn: departmentsAPI.getDepartments,
+    queryKey: ['departments', page],
+    queryFn: () => departmentsAPI.getDepartments({ page, per_page: perPage }),
   });
 
-  const departments = Array.isArray(data) ? data : data?.data || [];
+  const departments = data?.items || [];
+  const pagination = data?.pagination || null;
 
   const deactivateMutation = useMutation({
     mutationFn: (id) => departmentsAPI.deactivateDepartment(id),
@@ -25,6 +31,27 @@ export default function DepartmentList() {
     },
     onError: () => toast.error('Failed to deactivate department'),
   });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id) => departmentsAPI.deleteDepartment(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries(['departments']);
+      toast.success('Department deleted');
+    },
+    onError: () => toast.error('Failed to delete department'),
+  });
+
+  const handleEdit = (department) => {
+    setSelectedDepartment(department);
+    setShowEditModal(true);
+  };
+
+  const handleDelete = (department) => {
+    if (!department?.id) return;
+    const confirmed = window.confirm(`Delete "${department.name}"? This cannot be undone.`);
+    if (!confirmed) return;
+    deleteMutation.mutate(department.id);
+  };
 
   return (
     <div className="space-y-6">
@@ -63,7 +90,6 @@ export default function DepartmentList() {
             <TableHead>
               <TableRow>
                 <TableHeader>Name</TableHeader>
-                <TableHeader>Description</TableHeader>
                 <TableHeader>Status</TableHeader>
                 <TableHeader>Actions</TableHeader>
               </TableRow>
@@ -72,9 +98,6 @@ export default function DepartmentList() {
               {departments.map((dept) => (
                 <TableRow key={dept.id}>
                   <TableCell className="font-medium">{dept.name}</TableCell>
-                  <TableCell className="text-gray-600">
-                    {dept.description || 'N/A'}
-                  </TableCell>
                   <TableCell>
                     <Badge
                       variant={dept.is_active ? 'success' : 'danger'}
@@ -84,15 +107,31 @@ export default function DepartmentList() {
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    {dept.is_active && (
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => handleEdit(dept)}
+                      >
+                        Edit
+                      </Button>
+                      {dept.is_active && (
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={() => deactivateMutation.mutate(dept.id)}
+                        >
+                          Deactivate
+                        </Button>
+                      )}
                       <Button
                         size="sm"
                         variant="danger"
-                        onClick={() => deactivateMutation.mutate(dept.id)}
+                        onClick={() => handleDelete(dept)}
                       >
-                        Deactivate
+                        Delete
                       </Button>
-                    )}
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
@@ -110,7 +149,31 @@ export default function DepartmentList() {
           queryClient.invalidateQueries(['departments']);
         }}
       />
+
+      <EditDepartmentModal
+        isOpen={showEditModal}
+        department={selectedDepartment}
+        onClose={() => {
+          setShowEditModal(false);
+          setSelectedDepartment(null);
+        }}
+        onSuccess={() => {
+          setShowEditModal(false);
+          setSelectedDepartment(null);
+          queryClient.invalidateQueries(['departments']);
+        }}
+      />
+
+      {pagination?.last_page > 1 && (
+        <Pagination
+          currentPage={pagination.current_page || 1}
+          totalPages={pagination.last_page || 1}
+          onPageChange={(nextPage) => {
+            if (nextPage < 1 || nextPage > (pagination.last_page || 1)) return;
+            setPage(nextPage);
+          }}
+        />
+      )}
     </div>
   );
 }
-

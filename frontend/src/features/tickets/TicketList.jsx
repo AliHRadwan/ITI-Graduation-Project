@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { ticketsAPI } from '@/api';
-import { Button, Badge, Table, TableHead, TableBody, TableRow, TableHeader, TableCell, Spinner, EmptyState } from '@/components/ui';
+import { ticketsAPI, departmentsAPI } from '@/api';
+import { Button, Badge, Table, TableHead, TableBody, TableRow, TableHeader, TableCell, Spinner, EmptyState, Pagination } from '@/components/ui';
 import { PlusIcon, TicketIcon } from '@heroicons/react/24/outline';
 import { format } from 'date-fns';
 import CreateTicketModal from './CreateTicketModal';
@@ -16,9 +16,16 @@ const statusColors = {
 
 const priorityColors = {
   low: 'default',
-  medium: 'info',
+  med: 'info',
   high: 'warning',
   urgent: 'danger',
+};
+
+const priorityLabels = {
+  low: 'Low',
+  med: 'Medium',
+  high: 'High',
+  urgent: 'Urgent',
 };
 
 export default function TicketList() {
@@ -27,16 +34,31 @@ export default function TicketList() {
     status: '',
     priority: '',
     category: '',
+    department_id: '',
   });
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [page, setPage] = useState(1);
+  const perPage = 3;
 
   const { data, isLoading, refetch } = useQuery({
-    queryKey: ['tickets', filters],
-    queryFn: () => ticketsAPI.getTickets(filters),
+    queryKey: ['tickets', filters, page],
+    queryFn: () => ticketsAPI.getTickets({ ...filters, page, per_page: perPage }),
     refetchInterval: 15000, // Refresh every 15 seconds
   });
 
-  const tickets = Array.isArray(data) ? data : data?.data || [];
+  const tickets = data?.items || [];
+  const pagination = data?.pagination || null;
+
+  const { data: departmentsData } = useQuery({
+    queryKey: ['departments'],
+    queryFn: departmentsAPI.getDepartments,
+  });
+
+  const departments = departmentsData?.items || [];
+
+  useEffect(() => {
+    setPage(1);
+  }, [filters]);
 
   return (
     <div className="space-y-6">
@@ -54,7 +76,7 @@ export default function TicketList() {
 
       {/* Filters */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <select
             value={filters.status}
             onChange={(e) => setFilters({ ...filters, status: e.target.value })}
@@ -74,22 +96,31 @@ export default function TicketList() {
           >
             <option value="">All Priority</option>
             <option value="low">Low</option>
-            <option value="medium">Medium</option>
+            <option value="med">Medium</option>
             <option value="high">High</option>
             <option value="urgent">Urgent</option>
           </select>
 
-          <select
+          <input
+            type="text"
+            placeholder="Category"
             value={filters.category}
             onChange={(e) => setFilters({ ...filters, category: e.target.value })}
             className="rounded-md border-gray-300"
+          />
+
+
+          <select
+            value={filters.department_id}
+            onChange={(e) => setFilters({ ...filters, department_id: e.target.value })}
+            className="rounded-md border-gray-300"
           >
-            <option value="">All Categories</option>
-            <option value="housekeeping">Housekeeping</option>
-            <option value="food_and_drinks">Food & Drinks</option>
-            <option value="maintenance">Maintenance</option>
-            <option value="room_service">Room Service</option>
-            <option value="other">Other</option>
+            <option value="">All Departments</option>
+            {departments.map((department) => (
+              <option key={department.id} value={department.id}>
+                {department.name}
+              </option>
+            ))}
           </select>
         </div>
       </div>
@@ -118,10 +149,13 @@ export default function TicketList() {
               <TableRow>
                 <TableHeader>ID</TableHeader>
                 <TableHeader>Room</TableHeader>
+                <TableHeader>Department</TableHeader>
                 <TableHeader>Category</TableHeader>
                 <TableHeader>Priority</TableHeader>
                 <TableHeader>Status</TableHeader>
+                <TableHeader>Description</TableHeader>
                 <TableHeader>Created</TableHeader>
+                <TableHeader>Updated</TableHeader>
                 <TableHeader>Actions</TableHeader>
               </TableRow>
             </TableHead>
@@ -132,13 +166,14 @@ export default function TicketList() {
                   onClick={() => navigate(`/admin/tickets/${ticket.id}`)}
                 >
                   <TableCell>#{ticket.id.substring(0, 8)}</TableCell>
-                  <TableCell>{ticket.room?.room_number || 'N/A'}</TableCell>
+                  <TableCell>{ticket.room?.number || 'N/A'}</TableCell>
+                  <TableCell>{ticket.department?.name || 'N/A'}</TableCell>
                   <TableCell className="capitalize">
                     {ticket.category.replace('_', ' ')}
                   </TableCell>
                   <TableCell>
                     <Badge variant={priorityColors[ticket.priority]} size="sm">
-                      {ticket.priority}
+                      {priorityLabels[ticket.priority] || ticket.priority}
                     </Badge>
                   </TableCell>
                   <TableCell>
@@ -147,7 +182,15 @@ export default function TicketList() {
                     </Badge>
                   </TableCell>
                   <TableCell>
+                    <span className="block max-w-[240px] truncate text-gray-600">
+                      {ticket.description || 'N/A'}
+                    </span>
+                  </TableCell>
+                  <TableCell>
                     {ticket.created_at ? format(new Date(ticket.created_at), 'MMM d, yyyy HH:mm') : 'N/A'}
+                  </TableCell>
+                  <TableCell>
+                    {ticket.updated_at ? format(new Date(ticket.updated_at), 'MMM d, yyyy HH:mm') : 'N/A'}
                   </TableCell>
                   <TableCell>
                     <Button
@@ -177,7 +220,17 @@ export default function TicketList() {
           refetch();
         }}
       />
+
+      {pagination?.last_page > 1 && (
+        <Pagination
+          currentPage={pagination.current_page || 1}
+          totalPages={pagination.last_page || 1}
+          onPageChange={(nextPage) => {
+            if (nextPage < 1 || nextPage > (pagination.last_page || 1)) return;
+            setPage(nextPage);
+          }}
+        />
+      )}
     </div>
   );
 }
-

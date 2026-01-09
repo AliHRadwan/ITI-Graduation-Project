@@ -44,7 +44,7 @@ export default function QRTokenModal({ isOpen, onClose, room }) {
   const issueTokenMutation = useMutation({
     mutationFn: () =>
       roomsAPI.issueToken(room.id, {
-        expires_in_days: expiresInDays,
+        expires_at: new Date(Date.now() + expiresInDays * 24 * 60 * 60 * 1000).toISOString(),
       }),
     onSuccess: () => {
       queryClient.invalidateQueries(['room-tokens', room.id]);
@@ -212,4 +212,3 @@ export default function QRTokenModal({ isOpen, onClose, room }) {
     </Modal>
   );
 }
-

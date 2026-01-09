@@ -18,7 +18,8 @@ class DepartmentController extends Controller
      */
     public function index(): AnonymousResourceCollection
     {
-        $departments = Department::orderBy('name')->get();
+        $departments = Department::orderBy('name')
+            ->paginate((int) request()->input('per_page', 5));
 
         return DepartmentResource::collection($departments);
     }

@@ -1,10 +1,12 @@
-import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useMemo, useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import toast from 'react-hot-toast';
 import { roomsAPI } from '@/api';
-import { Button, Badge, Spinner, EmptyState } from '@/components/ui';
+import { Button, Badge, Spinner, EmptyState, Pagination } from '@/components/ui';
 import { PlusIcon, BuildingOfficeIcon, QrCodeIcon } from '@heroicons/react/24/outline';
 import CreateRoomModal from './CreateRoomModal';
 import QRTokenModal from './QRTokenModal';
+import EditRoomModal from './EditRoomModal';
 
 const statusColors = {
   available: 'success',
@@ -14,23 +16,53 @@ const statusColors = {
 };
 
 export default function RoomList() {
+  const queryClient = useQueryClient();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedRoom, setSelectedRoom] = useState(null);
   const [showQRModal, setShowQRModal] = useState(false);
-  const [filterFloor, setFilterFloor] = useState('');
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [page, setPage] = useState(1);
+  const perPage = 8;
 
-  const { data, isLoading, refetch } = useQuery({
-    queryKey: ['rooms', filterFloor],
-    queryFn: () => roomsAPI.getRooms(filterFloor ? { floor: filterFloor } : {}),
+  const { data, isLoading } = useQuery({
+    queryKey: ['rooms', page],
+    queryFn: () => roomsAPI.getRooms({ page, per_page: perPage }),
   });
 
-  const rooms = Array.isArray(data) ? data : data?.data || [];
+  const rooms = data?.items || [];
+  const pagination = data?.pagination || null;
+  const collator = useMemo(
+    () => new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' }),
+    []
+  );
+  const sortedRooms = useMemo(
+    () => [...rooms].sort((a, b) => collator.compare(a.room_number, b.room_number)),
+    [rooms, collator]
+  );
 
-  const floors = [...new Set(rooms?.map((r) => r.floor) || [])].sort();
+  const deleteMutation = useMutation({
+    mutationFn: (id) => roomsAPI.deleteRoom(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries(['rooms']);
+      toast.success('Room deleted');
+    },
+    onError: () => toast.error('Failed to delete room'),
+  });
 
   const handleQRClick = (room) => {
     setSelectedRoom(room);
     setShowQRModal(true);
+  };
+
+  const handleEditClick = (room) => {
+    setSelectedRoom(room);
+    setShowEditModal(true);
+  };
+
+  const handleDeleteClick = (room) => {
+    const confirmed = window.confirm(`Delete room ${room.room_number}? This cannot be undone.`);
+    if (!confirmed) return;
+    deleteMutation.mutate(room.id);
   };
 
   if (isLoading) {
@@ -55,22 +87,6 @@ export default function RoomList() {
         </Button>
       </div>
 
-      {/* Filters */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-        <select
-          value={filterFloor}
-          onChange={(e) => setFilterFloor(e.target.value)}
-          className="rounded-md border-gray-300"
-        >
-          <option value="">All Floors</option>
-          {floors.map((floor) => (
-            <option key={floor} value={floor}>
-              Floor {floor}
-            </option>
-          ))}
-        </select>
-      </div>
-
       {/* Room Grid */}
       {!rooms || rooms.length === 0 ? (
         <EmptyState
@@ -86,7 +102,7 @@ export default function RoomList() {
         />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {rooms.map((room) => (
+          {sortedRooms.map((room) => (
             <div
               key={room.id}
               className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow"
@@ -96,26 +112,10 @@ export default function RoomList() {
                   <h3 className="text-xl font-bold text-gray-900">
                     {room.room_number}
                   </h3>
-                  <p className="text-sm text-gray-600">{room.room_type}</p>
                 </div>
                 <Badge variant={statusColors[room.status || 'available']}>
                   {room.status || 'available'}
                 </Badge>
-              </div>
-
-              <div className="space-y-2 text-sm text-gray-600 mb-4">
-                <div className="flex justify-between">
-                  <span>Floor:</span>
-                  <span className="font-medium text-gray-900">{room.floor}</span>
-                </div>
-                {room.capacity && (
-                  <div className="flex justify-between">
-                    <span>Capacity:</span>
-                    <span className="font-medium text-gray-900">
-                      {room.capacity} guests
-                    </span>
-                  </div>
-                )}
               </div>
 
               <div className="flex gap-2">
@@ -127,6 +127,22 @@ export default function RoomList() {
                 >
                   <QrCodeIcon className="h-4 w-4 mr-1" />
                   QR Code
+                </Button>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  fullWidth
+                  onClick={() => handleEditClick(room)}
+                >
+                  Edit
+                </Button>
+                <Button
+                  size="sm"
+                  variant="danger"
+                  fullWidth
+                  onClick={() => handleDeleteClick(room)}
+                >
+                  Delete
                 </Button>
               </div>
             </div>
@@ -140,9 +156,25 @@ export default function RoomList() {
         onClose={() => setShowCreateModal(false)}
         onSuccess={() => {
           setShowCreateModal(false);
-          refetch();
+          queryClient.invalidateQueries(['rooms']);
         }}
       />
+
+      {selectedRoom && (
+        <EditRoomModal
+          isOpen={showEditModal}
+          onClose={() => {
+            setShowEditModal(false);
+            setSelectedRoom(null);
+          }}
+          room={selectedRoom}
+          onSuccess={() => {
+            setShowEditModal(false);
+            setSelectedRoom(null);
+            queryClient.invalidateQueries(['rooms']);
+          }}
+        />
+      )}
 
       {selectedRoom && (
         <QRTokenModal
@@ -154,7 +186,17 @@ export default function RoomList() {
           room={selectedRoom}
         />
       )}
+
+      {pagination?.last_page > 1 && (
+        <Pagination
+          currentPage={pagination.current_page || 1}
+          totalPages={pagination.last_page || 1}
+          onPageChange={(nextPage) => {
+            if (nextPage < 1 || nextPage > (pagination.last_page || 1)) return;
+            setPage(nextPage);
+          }}
+        />
+      )}
     </div>
   );
 }
-

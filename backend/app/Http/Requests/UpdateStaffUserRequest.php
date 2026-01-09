@@ -53,6 +53,16 @@ class UpdateStaffUserRequest extends FormRequest
                 'sometimes',
                 'boolean',
             ],
+            'staff_role_id' => [
+                'required',
+                'uuid',
+                'exists:staff_roles,id',
+            ],
+            'department_id' => [
+                'nullable',
+                'uuid',
+                'exists:departments,id',
+            ],
         ];
     }
 
@@ -74,6 +84,7 @@ class UpdateStaffUserRequest extends FormRequest
             
             'password.min' => 'The password must be at least 8 characters.',
             'password.max' => 'The password may not be greater than 128 characters.',
+            'staff_role_id.required' => 'A staff role is required.',
         ];
     }
 }

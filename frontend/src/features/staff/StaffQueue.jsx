@@ -15,9 +15,16 @@ const statusColors = {
 
 const priorityColors = {
   low: 'default',
-  medium: 'info',
+  med: 'info',
   high: 'warning',
   urgent: 'danger',
+};
+
+const priorityLabels = {
+  low: 'Low',
+  med: 'Medium',
+  high: 'High',
+  urgent: 'Urgent',
 };
 
 export default function StaffQueue() {
@@ -30,7 +37,7 @@ export default function StaffQueue() {
     refetchInterval: 10000,
   });
 
-  const tickets = Array.isArray(data) ? data : data?.data || [];
+  const tickets = data?.items || [];
 
   if (isLoading) {
     return (
@@ -77,12 +84,12 @@ export default function StaffQueue() {
               <div className="space-y-2 text-sm">
                 <div className="flex items-center justify-between">
                   <span className="text-gray-600">Room:</span>
-                  <span className="font-medium">{ticket.room?.room_number}</span>
+                  <span className="font-medium">{ticket.room?.number}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-gray-600">Priority:</span>
                   <Badge variant={priorityColors[ticket.priority]} size="sm">
-                    {ticket.priority}
+                    {priorityLabels[ticket.priority] || ticket.priority}
                   </Badge>
                 </div>
                 <div className="flex items-center justify-between">
@@ -99,4 +106,3 @@ export default function StaffQueue() {
     </div>
   );
 }
-

@@ -26,7 +26,10 @@ class RoomController extends Controller
             $query->where('status', $request->status);
         }
 
-        $rooms = $query->orderBy('room_number')->get();
+        $rooms = $query
+            ->orderByRaw('CAST(room_number AS UNSIGNED)')
+            ->orderBy('room_number')
+            ->paginate((int) $request->input('per_page', 8));
 
         return RoomResource::collection($rooms);
     }

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -11,7 +11,7 @@ const roomSchema = z.object({
   status: z.enum(['available', 'occupied', 'maintenance', 'cleaning']).optional(),
 });
 
-export default function CreateRoomModal({ isOpen, onClose, onSuccess }) {
+export default function EditRoomModal({ isOpen, room, onClose, onSuccess }) {
   const [isLoading, setIsLoading] = useState(false);
 
   const {
@@ -22,26 +22,40 @@ export default function CreateRoomModal({ isOpen, onClose, onSuccess }) {
   } = useForm({
     resolver: zodResolver(roomSchema),
     defaultValues: {
-      status: 'available',
+      room_number: room?.room_number || '',
+      status: room?.status || 'available',
     },
   });
 
+  useEffect(() => {
+    if (isOpen) {
+      reset({
+        room_number: room?.room_number || '',
+        status: room?.status || 'available',
+      });
+    }
+  }, [isOpen, room, reset]);
+
   const onSubmit = async (data) => {
+    if (!room?.id) {
+      toast.error('Room not found');
+      return;
+    }
+
     setIsLoading(true);
     try {
-      await roomsAPI.createRoom(data);
-      toast.success('Room created successfully!');
-      reset();
+      await roomsAPI.updateRoom(room.id, data);
+      toast.success('Room updated successfully!');
       onSuccess?.();
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to create room');
+      toast.error(error.response?.data?.message || 'Failed to update room');
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Add New Room">
+    <Modal isOpen={isOpen} onClose={onClose} title="Edit Room">
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <Input
           label="Room Number"
@@ -67,7 +81,7 @@ export default function CreateRoomModal({ isOpen, onClose, onSuccess }) {
             Cancel
           </Button>
           <Button type="submit" loading={isLoading} disabled={isLoading}>
-            Create Room
+            Update Room
           </Button>
         </div>
       </form>

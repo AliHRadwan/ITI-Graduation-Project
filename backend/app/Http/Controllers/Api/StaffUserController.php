@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use App\Models\StaffUser;
 use App\Http\Requests\StoreStaffUserRequest;
 use App\Http\Requests\UpdateStaffUserRequest;
+use Illuminate\Support\Facades\DB;
 
 class StaffUserController extends Controller
 {
@@ -30,7 +31,21 @@ class StaffUserController extends Controller
             $query->onlyTrashed();
         }
 
-        return response()->json($query->get());
+        $users = $query
+            ->with(['memberships.role', 'memberships.department'])
+            ->paginate((int) $request->input('per_page', 5));
+
+        $items = collect($users->items())->map(fn ($user) => $this->serializeStaffUser($user));
+
+        return response()->json([
+            'items' => $items,
+            'pagination' => [
+                'current_page' => $users->currentPage(),
+                'per_page' => $users->perPage(),
+                'total' => $users->total(),
+                'last_page' => $users->lastPage(),
+            ],
+        ]);
     }
 
     public function show($id)
@@ -38,7 +53,8 @@ class StaffUserController extends Controller
         $user = StaffUser::withTrashed()
             ->with(['memberships.department', 'memberships.role'])
             ->findOrFail($id);
-        return response()->json($user);
+
+        return response()->json($this->serializeStaffUser($user));
     }
     public function store(StoreStaffUserRequest $request)
     {
@@ -53,15 +69,31 @@ class StaffUserController extends Controller
     {
         $user = StaffUser::withTrashed()->findOrFail($id);
         $data = $request->validated();
+        $membershipData = [
+            'staff_role_id' => $data['staff_role_id'],
+            'department_id' => $data['department_id'] ?? null,
+        ];
+        unset($data['staff_role_id'], $data['department_id']);
 
         // Hash password if provided
         if (isset($data['password'])) {
             $data['password'] = bcrypt($data['password']);
         }
 
-        $user->update($data);
+        DB::transaction(function () use ($user, $data, $membershipData) {
+            $user->update($data);
 
-        return response()->json($user);
+            $membership = $user->memberships()->first();
+            if ($membership) {
+                $membership->update($membershipData);
+            } else {
+                $user->memberships()->create($membershipData);
+            }
+        });
+
+        $user->load(['memberships.department', 'memberships.role']);
+
+        return response()->json($this->serializeStaffUser($user));
     }
     public function deactivate($id)
     {
@@ -85,7 +117,10 @@ class StaffUserController extends Controller
     public function destroy($id)
     {
         $user = StaffUser::findOrFail($id);
-        $user->delete(); // Soft delete
+        DB::transaction(function () use ($user) {
+            $user->memberships()->delete();
+            $user->delete(); // Soft delete
+        });
 
         return response()->json(['message' => 'User deleted successfully']);
     }
@@ -110,6 +145,29 @@ class StaffUserController extends Controller
         $user->forceDelete();
 
         return response()->json(['message' => 'User permanently deleted']);
+    }
+
+    private function serializeStaffUser(StaffUser $user): array
+    {
+        $membership = $user->memberships->first();
+        $role = $membership?->role;
+        $department = $membership?->department;
+
+        return [
+            'id' => $user->id,
+            'email' => $user->email,
+            'name' => $user->name,
+            'is_active' => (bool) $user->is_active,
+            'created_at' => $user->created_at?->toISOString(),
+            'role' => $role ? [
+                'id' => $role->id,
+                'name' => $role->name,
+            ] : null,
+            'department' => $department ? [
+                'id' => $department->id,
+                'name' => $department->name,
+            ] : null,
+        ];
     }
 
 }
