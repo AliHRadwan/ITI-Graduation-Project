@@ -21,6 +21,7 @@ class QrRoomToken extends Model
         'issued_at',
         'expires_at',
         'is_active',
+        'last_used_at',
     ];
 
     /**
@@ -33,6 +34,7 @@ class QrRoomToken extends Model
         return [
             'issued_at' => 'datetime',
             'expires_at' => 'datetime',
+            'last_used_at' => 'datetime',
             'is_active' => 'boolean',
             'created_at' => 'datetime',
             'updated_at' => 'datetime',

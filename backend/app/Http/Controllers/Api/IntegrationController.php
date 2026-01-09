@@ -437,5 +437,55 @@ class IntegrationController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Resolve QR token and return room information
+     * Used by n8n when guest scans QR code from /start command
+     */
+    public function resolveQrToken(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'token' => 'required|string',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'error' => 'Validation failed',
+                'details' => $validator->errors()
+            ], 422);
+        }
+
+        try {
+            // Find the QR token by UUID (the token is the UUID itself from the deep link)
+            $qrToken = \App\Models\QrRoomToken::with('room')
+                ->where('id', $request->token)
+                ->where('expires_at', '>', now())
+                ->first();
+
+            if (!$qrToken) {
+                return response()->json([
+                    'error' => 'Invalid or expired token',
+                    'message' => 'The QR code has expired or is invalid. Please request a new QR code from the front desk.'
+                ], 404);
+            }
+
+            // Mark token as used
+            $qrToken->update(['last_used_at' => now()]);
+
+            return response()->json([
+                'room_id' => $qrToken->room_id,
+                'room_number' => $qrToken->room->room_number,
+                'floor' => $qrToken->room->floor,
+                'room_type' => $qrToken->room->room_type,
+                'token_id' => $qrToken->id,
+                'success' => true,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'Failed to resolve QR token',
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
 }
 
