@@ -38,6 +38,9 @@ Route::prefix('integrations')->group(function () {
     
     // Handoff management
     Route::post('/conversations/{conversation}/handoff', [IntegrationController::class, 'handoffConversation']);
+    
+    // QR Code resolution
+    Route::post('/qr/resolve', [IntegrationController::class, 'resolveQrToken']);
 });
 
 // ========================================
