@@ -275,7 +275,7 @@ class IntegrationController extends Controller
             if ($departmentId) {
                 $leastBusyMembership = \App\Models\StaffMembership::where('department_id', $departmentId)
                     ->whereHas('staffUser', function($q) {
-                        $q->where('status', 'active'); // Only active staff
+                        $q->where('is_active', true); // Only active staff
                     })
                     ->with('staffUser')
                     ->get()
