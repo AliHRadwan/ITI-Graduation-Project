@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use Illuminate\Support\Facades\Http;
 
 class Ticket extends Model
 {
@@ -21,6 +22,15 @@ class Ticket extends Model
         "priority",
         "description",
     ];
+
+    protected static function booted()
+    {
+        static::updated(function ($ticket) {
+            if ($ticket->wasChanged('status')) {
+                $ticket->notifyStatusChange();
+            }
+        });
+    }
 
     public function room()
     {
@@ -79,5 +89,35 @@ class Ticket extends Model
         return now()->greaterThan(
             $this->created_at->addMinutes($policy->resolution_minutes)
         );
+    }
+
+    public function notifyStatusChange()
+    {
+        $webhookUrl = config('services.n8n.ticket_webhook_url');
+        
+        if (!$webhookUrl) {
+            return;
+        }
+
+        $payload = [
+            'ticket_id' => $this->id,
+            'conversation_id' => $this->conversation_id,
+            'status' => $this->status,
+            'old_status' => $this->getOriginal('status'),
+            'priority' => $this->priority,
+            'category' => $this->category,
+            'room_number' => $this->room?->room_number,
+            'assigned_staff_name' => $this->staffUser?->name,
+            'updated_by' => auth()->user()?->name ?? 'system',
+        ];
+
+        try {
+            Http::timeout(5)->post($webhookUrl, $payload);
+        } catch (\Exception $e) {
+            \Log::warning('Failed to send ticket notification webhook', [
+                'ticket_id' => $this->id,
+                'error' => $e->getMessage()
+            ]);
+        }
     }
 }
