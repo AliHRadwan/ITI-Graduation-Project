@@ -1,10 +1,11 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { slaAPI, departmentsAPI } from '@/api';
+import { slaAPI, departmentsAPI, authAPI } from '@/api';
 import { Card, CardHeader, CardTitle, CardContent, Button, Input, Modal, Table, TableHead, TableBody, TableRow, TableHeader, TableCell, Spinner, Pagination, Tabs, TabList, TabButton, TabPanels, TabPanel, Badge } from '@/components/ui';
 import toast from 'react-hot-toast';
 import { useTheme } from '@/context/ThemeContext';
+import useAuthStore from '@/store/authStore';
 
 const emptyPolicy = {
   id: null,
@@ -20,10 +21,16 @@ export default function AdminSettings() {
   const [showPolicyModal, setShowPolicyModal] = useState(false);
   const [policyForm, setPolicyForm] = useState(emptyPolicy);
   const { theme, setTheme } = useTheme();
+  const localUser = useAuthStore((state) => state.user);
 
   const { data: policiesData, isLoading } = useQuery({
     queryKey: ['sla-policies', page],
     queryFn: () => slaAPI.getPolicies({ page }),
+  });
+
+  const { data: meData } = useQuery({
+    queryKey: ['auth-me'],
+    queryFn: authAPI.me,
   });
 
   const { data: departmentsData } = useQuery({
@@ -39,6 +46,8 @@ export default function AdminSettings() {
   const policies = policiesData?.items || [];
   const pagination = policiesData?.pagination || null;
   const departments = departmentsData?.items || [];
+  const user = meData?.user || meData || localUser;
+  const memberships = user?.memberships || [];
 
   const handleOpenCreate = () => {
     setPolicyForm(emptyPolicy);
@@ -96,8 +105,8 @@ export default function AdminSettings() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
-        <p className="text-gray-600">Manage SLA policies and staff access</p>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Settings</h1>
+        <p className="text-gray-600 dark:text-gray-400">Manage SLA policies and staff access</p>
       </div>
 
       <Card>
@@ -105,12 +114,55 @@ export default function AdminSettings() {
           <Tabs selectedIndex={activeTab} onChange={setActiveTab}>
             <div className="border-b border-gray-200 px-4 py-3">
               <TabList className="border-b-0">
+                <TabButton>Profile</TabButton>
                 <TabButton>SLA Policies</TabButton>
                 <TabButton>SLA Breaches</TabButton>
                 <TabButton>Staff Users</TabButton>
               </TabList>
             </div>
             <TabPanels>
+              <TabPanel>
+                <div className="p-4 space-y-4">
+                  <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Profile</h2>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Your account information.</p>
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Profile</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-700 dark:text-gray-300">
+                        <div>
+                          <div className="text-gray-500 dark:text-gray-400">Name</div>
+                          <div className="font-medium">{user?.name || 'N/A'}</div>
+                        </div>
+                        <div>
+                          <div className="text-gray-500 dark:text-gray-400">Email</div>
+                          <div className="font-medium">{user?.email || 'N/A'}</div>
+                        </div>
+                        <div>
+                          <div className="text-gray-500 dark:text-gray-400">Role</div>
+                          <div className="font-medium">
+                            {memberships[0]?.role || memberships[0]?.staff_role?.name || user?.role || 'N/A'}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-gray-500 dark:text-gray-400">Department</div>
+                          <div className="font-medium">
+                            {memberships[0]?.department || memberships[0]?.department?.name || 'N/A'}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-gray-500 dark:text-gray-400">Created</div>
+                          <div className="font-medium">
+                            {user?.created_at ? new Date(user.created_at).toLocaleString() : 'N/A'}
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              </TabPanel>
+
               <TabPanel>
                 <div className="p-4 space-y-4">
                   <Card>
@@ -151,8 +203,8 @@ export default function AdminSettings() {
 
                   <div className="flex items-center justify-between">
                     <div>
-                      <h2 className="text-lg font-semibold text-gray-900">SLA Policies</h2>
-                      <p className="text-sm text-gray-600">Define response and resolution targets per department.</p>
+                      <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">SLA Policies</h2>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">Define response and resolution targets per department.</p>
                     </div>
                     <Button onClick={handleOpenCreate}>Add Policy</Button>
                   </div>
@@ -162,7 +214,7 @@ export default function AdminSettings() {
                       <Spinner size="lg" />
                     </div>
                   ) : policies.length === 0 ? (
-                    <div className="text-sm text-gray-500">No policies yet</div>
+                    <div className="text-sm text-gray-500 dark:text-gray-400">No policies yet</div>
                   ) : (
                     <Table>
                       <TableHead>
@@ -225,8 +277,8 @@ export default function AdminSettings() {
 
               <TabPanel>
                 <div className="p-4 space-y-4">
-                  <h2 className="text-lg font-semibold text-gray-900">SLA Breaches</h2>
-                  <p className="text-sm text-gray-600">Monitor tickets that exceed SLA response or resolution targets.</p>
+                  <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">SLA Breaches</h2>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Monitor tickets that exceed SLA response or resolution targets.</p>
 
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                     <Card>
@@ -235,13 +287,13 @@ export default function AdminSettings() {
                       </CardHeader>
                       <CardContent>
                         {breachesSummary.firstResponse.length === 0 ? (
-                          <div className="text-sm text-gray-500">No breaches</div>
+                          <div className="text-sm text-gray-500 dark:text-gray-400">No breaches</div>
                         ) : (
-                          <div className="space-y-2 text-sm text-gray-700">
+                          <div className="space-y-2 text-sm text-gray-700 dark:text-gray-300">
                             {breachesSummary.firstResponse.map((ticket) => (
                               <div key={ticket.id} className="flex items-center justify-between">
                                 <span>#{ticket.id?.substring(0, 8)}</span>
-                                <span className="text-xs text-gray-500">
+                                <span className="text-xs text-gray-500 dark:text-gray-400">
                                   {ticket.department?.name || 'N/A'}
                                 </span>
                               </div>
@@ -257,13 +309,13 @@ export default function AdminSettings() {
                       </CardHeader>
                       <CardContent>
                         {breachesSummary.resolution.length === 0 ? (
-                          <div className="text-sm text-gray-500">No breaches</div>
+                          <div className="text-sm text-gray-500 dark:text-gray-400">No breaches</div>
                         ) : (
-                          <div className="space-y-2 text-sm text-gray-700">
+                          <div className="space-y-2 text-sm text-gray-700 dark:text-gray-300">
                             {breachesSummary.resolution.map((ticket) => (
                               <div key={ticket.id} className="flex items-center justify-between">
                                 <span>#{ticket.id?.substring(0, 8)}</span>
-                                <span className="text-xs text-gray-500">
+                                <span className="text-xs text-gray-500 dark:text-gray-400">
                                   {ticket.department?.name || 'N/A'}
                                 </span>
                               </div>
@@ -278,8 +330,8 @@ export default function AdminSettings() {
 
               <TabPanel>
                 <div className="p-4 space-y-4">
-                  <h2 className="text-lg font-semibold text-gray-900">Staff Users</h2>
-                  <p className="text-sm text-gray-600">Manage staff accounts and access in the Staff module.</p>
+                  <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Staff Users</h2>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Manage staff accounts and access in the Staff module.</p>
                   <div>
                     <Link to="/admin/staff/users">
                       <Button>Go to Staff Users</Button>
