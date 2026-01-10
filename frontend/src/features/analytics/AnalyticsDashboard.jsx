@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { analyticsAPI, departmentsAPI } from '@/api';
+import { useQuery, useQueries } from '@tanstack/react-query';
+import { analyticsAPI, departmentsAPI, ticketsAPI } from '@/api';
 import { Card, CardHeader, CardTitle, CardContent, Spinner } from '@/components/ui';
 import MetricCard from './MetricCard';
 import TicketTrendChart from './TicketTrendChart';
@@ -76,6 +76,37 @@ export default function AnalyticsDashboard() {
   });
 
   const tickets = ticketReports?.tickets || [];
+  const recentTickets = useMemo(() => {
+    return [...tickets]
+      .sort((a, b) => {
+        const aTime = new Date(a.updated_at || a.created_at || 0).getTime();
+        const bTime = new Date(b.updated_at || b.created_at || 0).getTime();
+        return bTime - aTime;
+      })
+      .slice(0, 5);
+  }, [tickets]);
+
+  const { data: slaBreaches } = useQuery({
+    queryKey: ['sla-breaches'],
+    queryFn: ticketsAPI.getSlaBreaches,
+  });
+
+  const eventQueries = useQueries({
+    queries: recentTickets.map((ticket) => ({
+      queryKey: ['ticket-events', ticket.id],
+      queryFn: () => ticketsAPI.getTicketEvents(ticket.id),
+      enabled: recentTickets.length > 0,
+    })),
+  });
+
+  const ratingQueries = useQueries({
+    queries: recentTickets.map((ticket) => ({
+      queryKey: ['ticket-rating', ticket.id],
+      queryFn: () => ticketsAPI.getTicketRating(ticket.id),
+      enabled: recentTickets.length > 0,
+    })),
+  });
+
   const filteredTickets = useMemo(() => {
     if (!categoryFilter) return tickets;
     return tickets.filter((ticket) => ticket.category === categoryFilter);
@@ -147,6 +178,53 @@ export default function AnalyticsDashboard() {
     ];
   }, [slaReports]);
 
+  const activityFeed = useMemo(() => {
+    const items = [];
+    recentTickets.forEach((ticket, index) => {
+      const payload = eventQueries[index]?.data;
+      const events = payload?.data || payload?.events?.data || [];
+      events.forEach((event) => {
+        items.push({
+          id: event.id || `${ticket.id}-${event.created_at}`,
+          ticketId: ticket.id,
+          type: event.event_type,
+          note: event.note,
+          created_at: event.created_at,
+          actor: event.staff_user?.name || 'System',
+        });
+      });
+    });
+    return items
+      .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))
+      .slice(0, 8);
+  }, [recentTickets, eventQueries]);
+
+  const ratingsSummary = useMemo(() => {
+    const ratings = [];
+    ratingQueries.forEach((query, index) => {
+      const rating = query.data;
+      if (rating && rating.stars) {
+        ratings.push({
+          ticketId: recentTickets[index]?.id,
+          stars: rating.stars,
+          comment: rating.comment,
+          created_at: rating.created_at,
+        });
+      }
+    });
+    const avg =
+      ratings.length > 0
+        ? (ratings.reduce((sum, r) => sum + Number(r.stars || 0), 0) / ratings.length).toFixed(1)
+        : '0.0';
+    return {
+      avg,
+      count: ratings.length,
+      list: ratings
+        .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))
+        .slice(0, 5),
+    };
+  }, [ratingQueries, recentTickets]);
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -174,7 +252,7 @@ export default function AnalyticsDashboard() {
         <select
           value={dateRange}
           onChange={(e) => setDateRange(e.target.value)}
-          className="rounded-md border-gray-300"
+          className="rounded-md border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
         >
           <option value="today">Today</option>
           <option value="7days">Last 7 Days</option>
@@ -183,12 +261,12 @@ export default function AnalyticsDashboard() {
         </select>
       </div>
 
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+      <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 p-4">
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
           <select
             value={departmentId}
             onChange={(e) => setDepartmentId(e.target.value)}
-            className="rounded-md border-gray-300"
+            className="rounded-md border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
           >
             <option value="">All Departments</option>
             {departments.map((department) => (
@@ -201,7 +279,7 @@ export default function AnalyticsDashboard() {
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="rounded-md border-gray-300"
+            className="rounded-md border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
           >
             <option value="">All Statuses</option>
             <option value="new">New</option>
@@ -213,7 +291,7 @@ export default function AnalyticsDashboard() {
           <select
             value={priorityFilter}
             onChange={(e) => setPriorityFilter(e.target.value)}
-            className="rounded-md border-gray-300"
+            className="rounded-md border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
           >
             <option value="">All Priorities</option>
             <option value="low">Low</option>
@@ -227,7 +305,7 @@ export default function AnalyticsDashboard() {
             placeholder="Category"
             value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.target.value)}
-            className="rounded-md border-gray-300"
+            className="rounded-md border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500"
           />
         </div>
       </div>
@@ -387,6 +465,101 @@ export default function AnalyticsDashboard() {
                 <span className="font-semibold">
                   {slaReports?.avgResolutionMinutes != null ? `${slaReports.avgResolutionMinutes}m` : 'N/A'}
                 </span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>SLA Breaches Alert</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3 text-sm text-gray-700">
+              <div className="flex items-center justify-between">
+                <span>First Response Breaches</span>
+                <span className="font-semibold">{slaBreaches?.first_response_breaches?.length || 0}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span>Resolution Breaches</span>
+                <span className="font-semibold">{slaBreaches?.resolution_breaches?.length || 0}</span>
+              </div>
+              <div className="border-t border-gray-200 pt-3 space-y-2">
+                {[...(slaBreaches?.first_response_breaches || []), ...(slaBreaches?.resolution_breaches || [])]
+                  .slice(0, 5)
+                  .map((ticket) => (
+                    <div key={ticket.id} className="flex items-center justify-between">
+                      <span>#{ticket.id?.substring(0, 8)}</span>
+                      <span className="text-xs text-gray-500">
+                        {ticket.department?.name || 'N/A'}
+                      </span>
+                    </div>
+                  ))}
+                {(!slaBreaches?.first_response_breaches?.length && !slaBreaches?.resolution_breaches?.length) && (
+                  <div className="text-xs text-gray-500">No breaches found</div>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Ticket Events Activity</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {activityFeed.length === 0 ? (
+              <div className="text-sm text-gray-500">No recent activity</div>
+            ) : (
+              <div className="space-y-3 text-sm text-gray-700">
+                {activityFeed.map((event) => (
+                  <div key={event.id} className="flex items-start justify-between gap-3">
+                    <div>
+                      <div className="font-medium">
+                        #{event.ticketId?.substring(0, 8)} · {event.type?.replace('_', ' ')}
+                      </div>
+                      <div className="text-xs text-gray-500">{event.note}</div>
+                      <div className="text-xs text-gray-400">{event.actor}</div>
+                    </div>
+                    <div className="text-xs text-gray-400">
+                      {event.created_at ? event.created_at.slice(0, 16).replace('T', ' ') : 'N/A'}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Ticket Ratings Summary</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3 text-sm text-gray-700">
+              <div className="flex items-center justify-between">
+                <span>Average Rating</span>
+                <span className="font-semibold">{ratingsSummary.avg}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span>Ratings Count</span>
+                <span className="font-semibold">{ratingsSummary.count}</span>
+              </div>
+              <div className="border-t border-gray-200 pt-3 space-y-2">
+                {ratingsSummary.list.length === 0 ? (
+                  <div className="text-xs text-gray-500">No ratings available</div>
+                ) : (
+                  ratingsSummary.list.map((rating) => (
+                    <div key={`${rating.ticketId}-${rating.created_at}`} className="flex items-center justify-between">
+                      <span>#{rating.ticketId?.substring(0, 8)}</span>
+                      <span className="text-xs text-gray-500">
+                        {rating.stars}★ {rating.comment ? `· ${rating.comment}` : ''}
+                      </span>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           </CardContent>

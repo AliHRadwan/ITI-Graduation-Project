@@ -93,7 +93,7 @@ export default function RoomList() {
         </Button>
       </div>
 
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+      <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 p-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="relative w-full sm:max-w-xs">
             <MagnifyingGlassIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
@@ -129,7 +129,7 @@ export default function RoomList() {
           {filteredRooms.map((room) => (
             <div
               key={room.id}
-              className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 min-h-[180px] hover:shadow-md transition-shadow"
+              className="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-6 min-h-[180px] hover:shadow-md transition-shadow"
             >
               <div className="flex items-start justify-between">
                 <div className="space-y-1">

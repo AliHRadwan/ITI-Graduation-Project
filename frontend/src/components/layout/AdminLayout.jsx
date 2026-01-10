@@ -6,6 +6,7 @@ import {
   ChatBubbleLeftRightIcon,
   BuildingOfficeIcon,
   UsersIcon,
+  Cog6ToothIcon,
   Bars3Icon,
   XMarkIcon,
   BookOpenIcon,
@@ -20,6 +21,7 @@ const navigation = [
   { name: 'Staff', href: '/admin/staff/users', icon: UsersIcon },
   { name: 'Departments', href: '/admin/staff/departments', icon: BuildingOfficeIcon },
   { name: 'Knowledge Base', href: '/admin/knowledge-base', icon: BookOpenIcon },
+  { name: 'Settings', href: '/admin/settings', icon: Cog6ToothIcon },
 ];
 
 export default function AdminLayout() {
@@ -27,7 +29,7 @@ export default function AdminLayout() {
   const location = useLocation();
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-white text-slate-900 dark:bg-slate-950 dark:text-slate-100">
       {/* Mobile sidebar backdrop */}
       {sidebarOpen && (
         <div
@@ -38,15 +40,15 @@ export default function AdminLayout() {
 
       {/* Sidebar */}
       <div
-        className={`fixed inset-y-0 left-0 z-30 w-64 bg-white border-r border-gray-200 transform transition-transform duration-300 ease-in-out lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-30 w-64 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 transform transition-transform duration-300 ease-in-out lg:translate-x-0 ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
         <div className="flex items-center justify-between h-16 px-6 border-b border-gray-200">
-          <h1 className="text-xl font-bold text-gray-900">Hotel Concierge</h1>
+          <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">Hotel Concierge</h1>
           <button
             onClick={() => setSidebarOpen(false)}
-            className="lg:hidden text-gray-500 hover:text-gray-700"
+            className="lg:hidden text-gray-500 hover:text-gray-700 dark:text-gray-300 dark:hover:text-gray-100"
           >
             <XMarkIcon className="h-6 w-6" />
           </button>
@@ -61,8 +63,8 @@ export default function AdminLayout() {
                 to={item.href}
                 className={`flex items-center px-3 py-2 mt-1 text-sm font-medium rounded-md transition-colors ${
                   isActive
-                    ? 'bg-blue-50 text-blue-700'
-                    : 'text-gray-700 hover:bg-gray-50'
+                    ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-200'
+                    : 'text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800'
                 }`}
               >
                 <item.icon className="h-5 w-5 mr-3" />
@@ -72,8 +74,8 @@ export default function AdminLayout() {
           })}
         </nav>
 
-        <div className="absolute bottom-0 w-full p-4 border-t border-gray-200">
-          <p className="text-xs text-gray-500 text-center">Admin Dashboard</p>
+        <div className="absolute bottom-0 w-full p-4 border-t border-gray-200 dark:border-gray-800">
+          <p className="text-xs text-gray-500 dark:text-gray-400 text-center">Admin Dashboard</p>
         </div>
       </div>
 
@@ -87,4 +89,3 @@ export default function AdminLayout() {
     </div>
   );
 }
-

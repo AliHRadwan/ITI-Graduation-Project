@@ -10,7 +10,7 @@ export default function Tabs({ children, className = '', ...props }) {
 
 export function TabList({ children, className = '' }) {
   return (
-    <Tab.List className={`flex space-x-1 border-b border-gray-200 ${className}`}>
+    <Tab.List className={`flex space-x-1 border-b border-gray-200 dark:border-gray-800 ${className}`}>
       {children}
     </Tab.List>
   );
@@ -22,8 +22,8 @@ export function TabButton({ children }) {
       className={({ selected }) =>
         `px-4 py-2 text-sm font-medium focus:outline-none ${
           selected
-            ? 'border-b-2 border-blue-600 text-blue-600'
-            : 'text-gray-500 hover:text-gray-700'
+            ? 'border-b-2 border-blue-600 text-blue-600 dark:text-blue-300'
+            : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
         }`
       }
     >

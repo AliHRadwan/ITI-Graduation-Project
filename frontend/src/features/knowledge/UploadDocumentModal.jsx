@@ -151,7 +151,7 @@ export default function UploadDocumentModal({ isOpen, onClose, onSuccess }) {
               <div className="flex text-sm text-gray-600">
                 <label
                   htmlFor="file-upload"
-                  className="relative cursor-pointer bg-white rounded-md font-medium text-blue-600 hover:text-blue-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-blue-500"
+                  className="relative cursor-pointer bg-white dark:bg-gray-900 rounded-md font-medium text-blue-600 dark:text-blue-300 hover:text-blue-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-blue-500"
                 >
                   <span>Upload a file</span>
                   <input
@@ -215,5 +215,4 @@ export default function UploadDocumentModal({ isOpen, onClose, onSuccess }) {
     </Modal>
   );
 }
-
 

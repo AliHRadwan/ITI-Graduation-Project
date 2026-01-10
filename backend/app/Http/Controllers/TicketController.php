@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Ticket;
 use App\Models\TicketEvent;
+use Illuminate\Support\Facades\Gate;
 
 class TicketController extends Controller
 {
@@ -209,6 +210,13 @@ class TicketController extends Controller
         $validated = $request->validate([
             'note' => 'required|string|max:500',
         ]);
+
+        $user = $request->user();
+        if (!Gate::forUser($user)->allows('ticket.addNote', $ticket)) {
+            return response()->json([
+                'message' => 'You do not have permission to add a note to this ticket.',
+            ], 403);
+        }
 
         TicketEvent::create([
             'ticket_id' => $ticket->id,

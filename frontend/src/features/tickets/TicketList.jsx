@@ -91,12 +91,12 @@ export default function TicketList() {
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+      <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 p-4">
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
           <select
             value={filters.status}
             onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-            className="rounded-md border-gray-300"
+            className="rounded-md border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
           >
             <option value="">All Status</option>
             <option value="new">New</option>
@@ -108,7 +108,7 @@ export default function TicketList() {
           <select
             value={filters.priority}
             onChange={(e) => setFilters({ ...filters, priority: e.target.value })}
-            className="rounded-md border-gray-300"
+            className="rounded-md border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
           >
             <option value="">All Priority</option>
             <option value="low">Low</option>
@@ -126,7 +126,7 @@ export default function TicketList() {
           <select
             value={filters.department_id}
             onChange={(e) => setFilters({ ...filters, department_id: e.target.value })}
-            className="rounded-md border-gray-300"
+            className="rounded-md border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
           >
             <option value="">All Departments</option>
             {departments.map((department) => (
@@ -145,7 +145,7 @@ export default function TicketList() {
       </div>
 
       {/* Tickets Table */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+      <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-800">
         {isLoading ? (
           <div className="p-12">
             <Spinner size="lg" />

@@ -138,9 +138,9 @@ export default function ConversationList() {
         <p className="text-gray-600">Manage guest conversations</p>
       </div>
 
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+      <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-800">
         <Tabs selectedIndex={activeTab} onChange={setActiveTab}>
-          <div className="flex flex-col gap-3 border-b border-gray-200 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-3 border-b border-gray-200 dark:border-gray-800 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
             <TabList className="border-b-0">
               <TabButton>All ({conversations?.length || 0})</TabButton>
               <TabButton>Open</TabButton>

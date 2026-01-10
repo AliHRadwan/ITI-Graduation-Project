@@ -86,7 +86,7 @@ export default function StaffList() {
         </Button>
       </div>
 
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+      <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 p-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="w-full sm:max-w-xs">
             <Input
@@ -102,7 +102,7 @@ export default function StaffList() {
       </div>
 
       {/* Staff Table */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+      <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-800">
         {isLoading ? (
           <div className="p-12">
             <Spinner size="lg" />

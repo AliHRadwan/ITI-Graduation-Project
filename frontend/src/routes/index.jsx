@@ -19,11 +19,13 @@ import RoomList from '@/features/rooms/RoomList';
 import StaffList from '@/features/staff/StaffList';
 import DepartmentList from '@/features/staff/DepartmentList';
 import KnowledgeBaseList from '@/features/knowledge/KnowledgeBaseList';
+import AdminSettings from '@/features/settings/AdminSettings';
 
 // Staff Layout & Pages
 import StaffLayout from '@/components/layout/StaffLayout';
 import StaffQueue from '@/features/staff/StaffQueue';
 import StaffMetrics from '@/features/staff/StaffMetrics';
+import StaffSettings from '@/features/settings/StaffSettings';
 
 function RootRedirect() {
   const { isAuthenticated, user } = useAuthStore();
@@ -101,6 +103,10 @@ const router = createBrowserRouter([
         path: 'knowledge-base',
         element: <KnowledgeBaseList />,
       },
+      {
+        path: 'settings',
+        element: <AdminSettings />,
+      },
     ],
   },
   // Staff Routes
@@ -127,6 +133,10 @@ const router = createBrowserRouter([
       {
         path: 'metrics',
         element: <StaffMetrics />,
+      },
+      {
+        path: 'settings',
+        element: <StaffSettings />,
       },
       {
         path: 'tickets/:id',

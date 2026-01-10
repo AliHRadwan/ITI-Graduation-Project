@@ -6,6 +6,7 @@ export { ticketsAPI } from './tickets';
 export { conversationsAPI } from './conversations';
 export { roomsAPI } from './rooms';
 export { staffAPI } from './staff';
+export { slaAPI } from './sla';
 export { departmentsAPI } from './departments';
 export { guestsAPI } from './guests';
 export { knowledgeAPI } from './knowledge';
