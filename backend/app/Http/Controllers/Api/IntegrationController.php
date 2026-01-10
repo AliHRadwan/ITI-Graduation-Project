@@ -277,8 +277,8 @@ class IntegrationController extends Controller
 
             if ($departmentId) {
                 $leastBusyMembership = \App\Models\StaffMembership::where('department_id', $departmentId)
-                    ->whereHas('staffUser', function ($q) {
-                        $q->where('status', 'active'); // Only active staff
+                    ->whereHas('staffUser', function($q) {
+                        $q->where('is_active', true); // Only active staff
                     })
                     ->with('staffUser')
                     ->get()
@@ -300,13 +300,16 @@ class IntegrationController extends Controller
             }
 
             // 3️⃣ Create ticket with auto-assignment
+            // Map priority values to match database ENUM ('med' instead of 'medium')
+            $priority = $request->priority === 'medium' ? 'med' : $request->priority;
+
             $ticket = Ticket::create([
                 'conversation_id' => $request->conversation_id,
                 'room_id' => $roomId, // Validated room_id from request or conversation
                 'department_id' => $departmentId,
                 'actor_staff_user_id' => $staffUserId,
                 'category' => $request->category,
-                'priority' => $request->priority,
+                'priority' => $priority, // Maps "medium" → "med" to match database ENUM
                 'description' => $request->description,
                 'status' => 'new',
             ]);
