@@ -2,15 +2,21 @@ export const ROLES = {
   ADMIN: 'admin',
   MANAGER: 'manager',
   STAFF: 'staff',
+  READONLY: 'readonly',
 };
 
 export const hasRole = (user, roles) => {
   if (!user) return false;
   
-  const rolesArray = Array.isArray(roles) ? roles : [roles];
+  const rolesArray = (Array.isArray(roles) ? roles : [roles]).map((role) =>
+    typeof role === 'string' ? role.toLowerCase() : role
+  );
   
   // Check if user has direct role property (old structure)
   if (user.role) {
+    if (typeof user.role === 'string') {
+      return rolesArray.includes(user.role.toLowerCase());
+    }
     const roleSlug = user.role.slug || user.role.name?.toLowerCase();
     return rolesArray.includes(roleSlug);
   }
@@ -39,5 +45,6 @@ export const hasRole = (user, roles) => {
 export const isAdmin = (user) => hasRole(user, ROLES.ADMIN);
 export const isManager = (user) => hasRole(user, ROLES.MANAGER);
 export const isStaff = (user) => hasRole(user, ROLES.STAFF);
+export const isReadOnly = (user) => hasRole(user, ROLES.READONLY);
 export const isManagerOrAdmin = (user) => hasRole(user, [ROLES.ADMIN, ROLES.MANAGER]);
-
+export const isStaffRole = (user) => hasRole(user, [ROLES.STAFF, ROLES.READONLY]);

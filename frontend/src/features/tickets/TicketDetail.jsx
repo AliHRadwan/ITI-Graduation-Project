@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { ticketsAPI, staffAPI } from '@/api';
 import { Card, CardHeader, CardTitle, CardContent, Badge, Button, Select, Spinner } from '@/components/ui';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 import { format } from 'date-fns';
+import useAuthStore from '@/store/authStore';
+import { isStaffRole } from '@/utils/permissions';
 
 const statusColors = {
   new: 'warning',
@@ -24,7 +26,10 @@ const priorityLabels = {
 export default function TicketDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const queryClient = useQueryClient();
+  const user = useAuthStore((state) => state.user);
+  const staffView = isStaffRole(user) || location.pathname.startsWith('/staff');
   const [selectedStaff, setSelectedStaff] = useState('');
 
   const { data: ticket, isLoading } = useQuery({
@@ -36,6 +41,7 @@ export default function TicketDetail() {
   const { data: staffData } = useQuery({
     queryKey: ['staff-users'],
     queryFn: staffAPI.getUsers,
+    enabled: !staffView,
   });
 
   const staff = staffData?.items || [];
@@ -79,7 +85,7 @@ export default function TicketDetail() {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => navigate('/admin/tickets')}
+            onClick={() => navigate(staffView ? '/staff/queue' : '/admin/tickets')}
           >
             <ArrowLeftIcon className="h-5 w-5" />
           </Button>
@@ -95,7 +101,7 @@ export default function TicketDetail() {
         <Badge variant={statusColors[ticket.status]}>{ticket.status}</Badge>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main Content */}
         <div className="lg:col-span-2 space-y-6">
           <Card>
@@ -194,42 +200,44 @@ export default function TicketDetail() {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Assigned Staff</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {ticket.staff_user ? (
-                <div className="space-y-2">
-                  <p className="font-medium">{ticket.staff_user.name}</p>
-                  <p className="text-sm text-gray-600">{ticket.staff_user.email}</p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  <p className="text-sm text-gray-600">Not assigned yet</p>
-                  <Select
-                    value={selectedStaff}
-                    onChange={(e) => setSelectedStaff(e.target.value)}
-                    options={[
-                      { value: '', label: 'Select staff member' },
-                      ...(staff?.map((s) => ({
-                        value: s.id,
-                        label: s.name,
-                      })) || []),
-                    ]}
-                  />
-                  <Button
-                    fullWidth
-                    size="sm"
-                    disabled={!selectedStaff}
-                    onClick={() => assignStaffMutation.mutate(selectedStaff)}
-                  >
-                    Assign
-                  </Button>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          {!staffView && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Assigned Staff</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {ticket.staff_user ? (
+                  <div className="space-y-2">
+                    <p className="font-medium">{ticket.staff_user.name}</p>
+                    <p className="text-sm text-gray-600">{ticket.staff_user.email}</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <p className="text-sm text-gray-600">Not assigned yet</p>
+                    <Select
+                      value={selectedStaff}
+                      onChange={(e) => setSelectedStaff(e.target.value)}
+                      options={[
+                        { value: '', label: 'Select staff member' },
+                        ...(staff?.map((s) => ({
+                          value: s.id,
+                          label: s.name,
+                        })) || []),
+                      ]}
+                    />
+                    <Button
+                      fullWidth
+                      size="sm"
+                      disabled={!selectedStaff}
+                      onClick={() => assignStaffMutation.mutate(selectedStaff)}
+                    >
+                      Assign
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
     </div>

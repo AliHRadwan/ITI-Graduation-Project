@@ -151,7 +151,7 @@ Route::prefix('tickets')->middleware('auth:sanctum')->group(function () {
     Route::post('/', [TicketController::class, 'store'])->middleware('manager.or.admin');
     Route::get('{ticket}', [TicketController::class, 'show']);
     Route::patch('{ticket}', [TicketController::class, 'update'])->middleware('manager.or.admin');
-    Route::post('{ticket}/status', [TicketController::class, 'updateStatus'])->middleware('manager.or.admin');
+    Route::post('{ticket}/status', [TicketController::class, 'updateStatus']);
     Route::post('{ticket}/assign', [TicketController::class, 'assignStaff'])->middleware('manager.or.admin');
     Route::post('{ticket}/notes', [TicketController::class, 'addNote'])->middleware('manager.or.admin');
     Route::post('{ticket}/escalate', [TicketController::class, 'escalate'])->middleware('manager.or.admin');

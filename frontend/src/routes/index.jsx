@@ -1,6 +1,7 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import ProtectedRoute from '@/components/ProtectedRoute';
-import { ROLES } from '@/utils/permissions';
+import useAuthStore from '@/store/authStore';
+import { ROLES, isManagerOrAdmin } from '@/utils/permissions';
 
 // Auth
 import LoginPage from '@/features/auth/LoginPage';
@@ -24,6 +25,20 @@ import StaffLayout from '@/components/layout/StaffLayout';
 import StaffQueue from '@/features/staff/StaffQueue';
 import StaffMetrics from '@/features/staff/StaffMetrics';
 
+function RootRedirect() {
+  const { isAuthenticated, user } = useAuthStore();
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return isManagerOrAdmin(user) ? (
+    <Navigate to="/admin/dashboard" replace />
+  ) : (
+    <Navigate to="/staff/queue" replace />
+  );
+}
+
 const router = createBrowserRouter([
   {
     path: '/login',
@@ -39,7 +54,7 @@ const router = createBrowserRouter([
   },
   {
     path: '/',
-    element: <Navigate to="/admin/dashboard" replace />,
+    element: <RootRedirect />,
   },
   // Admin Routes
   {
@@ -92,7 +107,7 @@ const router = createBrowserRouter([
   {
     path: '/staff',
     element: (
-      <ProtectedRoute>
+      <ProtectedRoute allowedRoles={[ROLES.STAFF, ROLES.READONLY]}>
         <StaffLayout />
       </ProtectedRoute>
     ),
@@ -113,9 +128,12 @@ const router = createBrowserRouter([
         path: 'metrics',
         element: <StaffMetrics />,
       },
+      {
+        path: 'tickets/:id',
+        element: <TicketDetail />,
+      },
     ],
   },
 ]);
 
 export default router;
-

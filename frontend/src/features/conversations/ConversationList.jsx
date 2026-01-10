@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { conversationsAPI } from '@/api';
 import { Badge, Spinner, EmptyState, Tabs, TabList, TabButton, TabPanels, TabPanel, Pagination, Input } from '@/components/ui';
 import { ChatBubbleLeftRightIcon } from '@heroicons/react/24/outline';
@@ -14,6 +14,7 @@ const statusColors = {
 
 export default function ConversationList() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [activeTab, setActiveTab] = useState(0);
   const [page, setPage] = useState(1);
   const perPage = 3;
@@ -84,12 +85,14 @@ export default function ConversationList() {
       );
     }
 
+    const basePath = location.pathname.startsWith('/staff') ? '/staff' : '/admin';
+
     return (
       <div className="divide-y divide-gray-200">
         {conversationList.map((conversation) => (
           <div
             key={conversation.id}
-            onClick={() => navigate(`/admin/conversations/${conversation.id}`)}
+            onClick={() => navigate(`${basePath}/conversations/${conversation.id}`)}
             className="p-4 hover:bg-gray-50 cursor-pointer transition-colors"
           >
             <div className="flex items-start justify-between">
