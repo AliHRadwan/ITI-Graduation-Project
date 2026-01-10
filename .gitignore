@@ -44,7 +44,6 @@ Hotel_Service_Project/**/.env
 
 # Frontend Build
 frontend/build/
-frontend/dist/
 frontend/.env.local
 frontend/.env.*.local
 

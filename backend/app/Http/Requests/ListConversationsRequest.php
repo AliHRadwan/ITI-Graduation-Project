@@ -14,7 +14,8 @@ class ListConversationsRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'status' => 'nullable|in:open,handoff,closed',
+            'status' => 'nullable',
+            'status.*' => 'in:open,handoff,closed,OPEN,HANDOFF,CLOSED',
             'room_id' => 'nullable|uuid',
             'guest_id' => 'nullable|uuid',
             'per_page' => 'nullable|integer|min:1|max:100',

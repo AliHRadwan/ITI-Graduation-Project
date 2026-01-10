@@ -1,7 +1,11 @@
 import { Tab } from '@headlessui/react';
 
-export default function Tabs({ children, className = '' }) {
-  return <Tab.Group className={className}>{children}</Tab.Group>;
+export default function Tabs({ children, className = '', ...props }) {
+  return (
+    <Tab.Group className={className} {...props}>
+      {children}
+    </Tab.Group>
+  );
 }
 
 export function TabList({ children, className = '' }) {
@@ -35,4 +39,3 @@ export function TabPanels({ children, className = '' }) {
 export function TabPanel({ children, className = '' }) {
   return <Tab.Panel className={className}>{children}</Tab.Panel>;
 }
-

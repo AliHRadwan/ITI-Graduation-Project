@@ -4,16 +4,17 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import toast from 'react-hot-toast';
-import { ticketsAPI, roomsAPI, conversationsAPI } from '@/api';
+import { ticketsAPI, roomsAPI, conversationsAPI, departmentsAPI } from '@/api';
 import { Modal, Button, Input, Select, Textarea } from '@/components/ui';
 
 const ticketSchema = z.object({
-  conversation_id: z.string().optional(),
+  conversation_id: z.string().min(1, 'Conversation is required'),
   room_id: z.string().min(1, 'Room is required'),
+  department_id: z.string().min(1, 'Department is required'),
   category: z.enum(['housekeeping', 'food_and_drinks', 'maintenance', 'room_service', 'other']),
-  priority: z.enum(['low', 'medium', 'high', 'urgent']),
+  priority: z.enum(['low', 'med', 'high', 'urgent']),
+  status: z.enum(['new', 'doing', 'done', 'canceled']),
   description: z.string().min(10, 'Description must be at least 10 characters'),
-  is_emergency: z.boolean().optional(),
 });
 
 export default function CreateTicketModal({ isOpen, onClose, onSuccess }) {
@@ -25,7 +26,21 @@ export default function CreateTicketModal({ isOpen, onClose, onSuccess }) {
     enabled: isOpen,
   });
 
-  const rooms = Array.isArray(data) ? data : data?.data || [];
+  const rooms = data?.items || [];
+  const { data: departmentsData } = useQuery({
+    queryKey: ['departments'],
+    queryFn: departmentsAPI.getDepartments,
+    enabled: isOpen,
+  });
+
+  const { data: conversationsData } = useQuery({
+    queryKey: ['conversations', 'open'],
+    queryFn: () => conversationsAPI.getConversations({ status: 'open' }),
+    enabled: isOpen,
+  });
+
+  const departments = departmentsData?.items || [];
+  const conversations = conversationsData?.items || [];
 
   const {
     register,
@@ -35,19 +50,16 @@ export default function CreateTicketModal({ isOpen, onClose, onSuccess }) {
   } = useForm({
     resolver: zodResolver(ticketSchema),
     defaultValues: {
-      priority: 'medium',
+      priority: 'med',
       category: 'other',
-      is_emergency: false,
+      status: 'new',
     },
   });
 
   const onSubmit = async (data) => {
     setIsLoading(true);
     try {
-      await ticketsAPI.createTicket({
-        ...data,
-        source: 'staff',
-      });
+      await ticketsAPI.createTicket(data);
       toast.success('Ticket created successfully!');
       reset();
       onSuccess?.();
@@ -75,6 +87,32 @@ export default function CreateTicketModal({ isOpen, onClose, onSuccess }) {
         />
 
         <Select
+          label="Department"
+          options={[
+            { value: '', label: 'Select a department' },
+            ...(departments?.map((department) => ({
+              value: department.id,
+              label: department.name,
+            })) || []),
+          ]}
+          error={errors.department_id?.message}
+          {...register('department_id')}
+        />
+
+        <Select
+          label="Conversation"
+          options={[
+            { value: '', label: 'Select a conversation' },
+            ...(conversations?.map((conversation) => ({
+              value: conversation.id,
+              label: `${conversation.participant?.name || 'Guest'} (${conversation.room?.room_number || 'No room'})`,
+            })) || []),
+          ]}
+          error={errors.conversation_id?.message}
+          {...register('conversation_id')}
+        />
+
+        <Select
           label="Category"
           options={[
             { value: 'housekeeping', label: 'Housekeeping' },
@@ -91,12 +129,24 @@ export default function CreateTicketModal({ isOpen, onClose, onSuccess }) {
           label="Priority"
           options={[
             { value: 'low', label: 'Low' },
-            { value: 'medium', label: 'Medium' },
+            { value: 'med', label: 'Medium' },
             { value: 'high', label: 'High' },
             { value: 'urgent', label: 'Urgent' },
           ]}
           error={errors.priority?.message}
           {...register('priority')}
+        />
+
+        <Select
+          label="Status"
+          options={[
+            { value: 'new', label: 'New' },
+            { value: 'doing', label: 'Doing' },
+            { value: 'done', label: 'Done' },
+            { value: 'canceled', label: 'Canceled' },
+          ]}
+          error={errors.status?.message}
+          {...register('status')}
         />
 
         <Textarea
@@ -106,11 +156,6 @@ export default function CreateTicketModal({ isOpen, onClose, onSuccess }) {
           error={errors.description?.message}
           {...register('description')}
         />
-
-        <label className="flex items-center">
-          <input type="checkbox" className="rounded" {...register('is_emergency')} />
-          <span className="ml-2 text-sm text-gray-700">Mark as emergency</span>
-        </label>
 
         <div className="flex justify-end gap-3 pt-4">
           <Button type="button" variant="secondary" onClick={onClose}>
@@ -124,4 +169,3 @@ export default function CreateTicketModal({ isOpen, onClose, onSuccess }) {
     </Modal>
   );
 }
-

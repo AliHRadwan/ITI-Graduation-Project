@@ -7,7 +7,7 @@ use App\Http\Controllers\Concerns\ApiResponse;
 use App\Http\Resources\ConversationResource;
 use App\Http\Resources\ConversationDetailResource;
 use App\Models\Conversation;
-// use Illuminate\Http\Request;
+use Illuminate\Http\Request;
 use App\Http\Requests\ListConversationsRequest;
 
 class ConversationController extends Controller
@@ -21,11 +21,17 @@ class ConversationController extends Controller
         $status  = $filters['status'] ?? null;
         $roomId  = $filters['room_id'] ?? null;
         $guestId = $filters['guest_id'] ?? null;
-        $perPage = $filters['per_page'] ?? 20;
+        $perPage = $filters['per_page'] ?? 3;
+
+        $statusList = null;
+        if ($status) {
+            $statusList = is_array($status) ? $status : [$status];
+            $statusList = array_map('strtolower', $statusList);
+        }
     
         $conversations = Conversation::query()
-            ->with(['guestIdentity', 'room'])
-            ->when($status, fn($q) => $q->where('status', $status))
+            ->with(['guestIdentity', 'room', 'lastMessage'])
+            ->when($statusList, fn($q) => $q->whereIn('status', $statusList))
             ->when($roomId, fn($q) => $q->where('room_id', $roomId))
             ->when($guestId, fn($q) => $q->where('guest_identity_id', $guestId))
             ->orderByDesc('last_seen_at')
@@ -39,7 +45,7 @@ class ConversationController extends Controller
 
     public function show(Conversation $conversation)
     {
-        $conversation->load(['guestIdentity', 'room']);
+        $conversation->load(['guestIdentity', 'room', 'lastMessage']);
         $data = (new ConversationDetailResource($conversation))->resolve();
 
         return $this->success($data);
@@ -52,7 +58,7 @@ class ConversationController extends Controller
             'last_seen_at' => now(),
         ]);
 
-        $conversation->load(['guestIdentity', 'room']);
+        $conversation->load(['guestIdentity', 'room', 'lastMessage']);
         $data = (new ConversationDetailResource($conversation))->resolve();
 
         return $this->success($data);
@@ -65,7 +71,26 @@ class ConversationController extends Controller
             'last_seen_at' => now(),
         ]);
 
-        $conversation->load(['guestIdentity', 'room']);
+        $conversation->load(['guestIdentity', 'room', 'lastMessage']);
+        $data = (new ConversationDetailResource($conversation))->resolve();
+
+        return $this->success($data);
+    }
+
+    public function updateStatus(Request $request, Conversation $conversation)
+    {
+        $validated = $request->validate([
+            'status' => 'required|string|in:open,closed,handoff,OPEN,CLOSED,HANDOFF',
+        ]);
+
+        $status = strtolower($validated['status']);
+
+        $conversation->update([
+            'status' => $status,
+            'last_seen_at' => now(),
+        ]);
+
+        $conversation->load(['guestIdentity', 'room', 'lastMessage']);
         $data = (new ConversationDetailResource($conversation))->resolve();
 
         return $this->success($data);

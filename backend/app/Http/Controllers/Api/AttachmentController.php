@@ -18,9 +18,15 @@ class AttachmentController extends Controller
     public function upload(UploadAttachmentRequest $request)
     {
         $file = $request->file('file');
+        if (! $file) {
+            return response()->json(['message' => 'The file is missing'], 400);
+        }
 
         $disk = config('filesystems.default', 'public');
         $path = $file->store('attachments', ['disk' => $disk]);
+        if (! $path) {
+            return response()->json(['message' => 'Error in saving the file'], 500);
+        }
 
         $mime = $file->getMimeType() ?: $file->getClientMimeType();
         $size = (int) $file->getSize();
@@ -32,7 +38,7 @@ class AttachmentController extends Controller
             default => 'file',
         };
 
-        $url = Storage::disk($disk)->path($path);
+        $url = Storage::disk($disk)->url($path);
 
         return $this->success([
             'type' => $type,

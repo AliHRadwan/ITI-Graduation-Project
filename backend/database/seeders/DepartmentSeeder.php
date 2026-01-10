@@ -18,6 +18,7 @@ class DepartmentSeeder extends Seeder
             ['name' => 'Reception', 'is_active' => true],
             ['name' => 'Room Service', 'is_active' => true],
             ['name' => 'Concierge', 'is_active' => true],
+            ['name' => 'Management', 'is_active' => true]
         ];
 
         foreach ($departments as $department) {
