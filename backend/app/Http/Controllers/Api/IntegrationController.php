@@ -259,14 +259,60 @@ class IntegrationController extends Controller
             // Verify room exists and is valid
             $room = Room::findOrFail($roomId);
 
-            // 1️⃣ Find department based on category using routing rules
+            // 1️⃣ Find department based on category using routing rules OR emergency → Security
             $departmentId = null;
-            $routingRule = \App\Models\RoutingRule::where('match_category', $request->category)
-                ->where('is_active', true)
-                ->first();
 
-            if ($routingRule) {
-                $departmentId = $routingRule->department_id;
+            // Emergency tickets always go to Security department
+            if ($request->is_emergency) {
+                $securityDepartment = \App\Models\Department::where('name', 'Security')
+                    ->where('is_active', true)
+                    ->first();
+                
+                if ($securityDepartment) {
+                    $departmentId = $securityDepartment->id;
+                } else {
+                    DB::rollBack();
+                    return response()->json([
+                        'error' => 'Security department not found',
+                        'message' => 'Cannot create emergency ticket: Security department is not configured or is inactive. Please contact system administrator.'
+                    ], 422);
+                }
+            } else {
+                // For non-emergency tickets, use routing rules based on category
+                $routingRule = \App\Models\RoutingRule::where('match_category', $request->category)
+                    ->where('is_active', true)
+                    ->first();
+
+                if ($routingRule) {
+                    $departmentId = $routingRule->department_id;
+                }
+                
+                // Fallback: If no routing rule found, try to find a default department
+                if (!$departmentId) {
+                    // Try to find a department that matches the category name
+                    $categoryDepartment = \App\Models\Department::where('name', 'LIKE', '%' . str_replace('_', ' ', $request->category) . '%')
+                        ->where('is_active', true)
+                        ->first();
+                    
+                    if ($categoryDepartment) {
+                        $departmentId = $categoryDepartment->id;
+                    } else {
+                        // Last resort: Use the first active department
+                        $defaultDepartment = \App\Models\Department::where('is_active', true)->first();
+                        if ($defaultDepartment) {
+                            $departmentId = $defaultDepartment->id;
+                        }
+                    }
+                }
+            }
+
+            // Validate that department_id is set before proceeding
+            if (!$departmentId) {
+                DB::rollBack();
+                return response()->json([
+                    'error' => 'No department available',
+                    'message' => 'Cannot create ticket: No department is configured for category "' . $request->category . '". Please configure routing rules or departments in the system.'
+                ], 422);
             }
 
             // 2️⃣ Find least-busy staff in the department (Round-Robin)
