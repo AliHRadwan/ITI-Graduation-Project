@@ -1,9 +1,11 @@
-import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { ticketsAPI } from '@/api';
-import { Badge, Spinner, EmptyState } from '@/components/ui';
+import { Badge, Spinner, EmptyState, Pagination, Button, Input } from '@/components/ui';
 import { TicketIcon } from '@heroicons/react/24/outline';
 import { format } from 'date-fns';
+import toast from 'react-hot-toast';
 import useAuthStore from '@/store/authStore';
 
 const statusColors = {
@@ -29,15 +31,63 @@ const priorityLabels = {
 
 export default function StaffQueue() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const user = useAuthStore((state) => state.user);
+  const [page, setPage] = useState(1);
+  const perPage = 3;
+  const [openHistory, setOpenHistory] = useState({});
+  const [noteDrafts, setNoteDrafts] = useState({});
 
   const { data, isLoading } = useQuery({
-    queryKey: ['my-tickets', user?.id],
-    queryFn: () => ticketsAPI.getTickets({ assigned_to: user?.id }),
+    queryKey: ['my-tickets', user?.id, page],
+    queryFn: () => ticketsAPI.getTickets({ assigned_to: user?.id, page, per_page: perPage }),
     refetchInterval: 10000,
   });
 
+  const { data: slaBreaches } = useQuery({
+    queryKey: ['sla-breaches'],
+    queryFn: ticketsAPI.getSlaBreaches,
+  });
+
   const tickets = data?.items || [];
+  const pagination = data?.pagination || null;
+
+  const firstResponseBreaches = new Set(
+    (slaBreaches?.first_response_breaches || []).map((ticket) => ticket.id)
+  );
+  const resolutionBreaches = new Set(
+    (slaBreaches?.resolution_breaches || []).map((ticket) => ticket.id)
+  );
+
+  const statusMutation = useMutation({
+    mutationFn: ({ id, status }) => ticketsAPI.updateStatus(id, status),
+    onSuccess: () => {
+      queryClient.invalidateQueries(['my-tickets', user?.id]);
+    },
+    onError: () => {
+      toast.error('Failed to update ticket status');
+    },
+  });
+
+  const noteMutation = useMutation({
+    mutationFn: ({ id, note }) => ticketsAPI.addNote(id, note),
+    onSuccess: (_data, variables) => {
+      setNoteDrafts((prev) => ({ ...prev, [variables.id]: '' }));
+      queryClient.invalidateQueries(['ticket-events', variables.id]);
+      toast.success('Note added');
+    },
+    onError: (error) => {
+      if (error?.response?.status === 403) {
+        toast.error(error.response?.data?.message || "You don't have permission to add a note");
+        return;
+      }
+      toast.error('Failed to add note');
+    },
+  });
+
+  const toggleHistory = (ticketId) => {
+    setOpenHistory((prev) => ({ ...prev, [ticketId]: !prev[ticketId] }));
+  };
 
   if (isLoading) {
     return (
@@ -62,19 +112,36 @@ export default function StaffQueue() {
         />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {tickets.map((ticket) => (
+          {tickets.map((ticket) => {
+            const hasResolutionBreach = resolutionBreaches.has(ticket.id);
+            const hasResponseBreach = firstResponseBreaches.has(ticket.id);
+            const showHistory = !!openHistory[ticket.id];
+
+            return (
             <div
               key={ticket.id}
-              onClick={() => navigate(`/admin/tickets/${ticket.id}`)}
-              className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md cursor-pointer transition-shadow"
+              onClick={() => navigate(`/staff/tickets/${ticket.id}`)}
+              className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 p-6 hover:shadow-md cursor-pointer transition-shadow"
             >
               <div className="flex items-start justify-between mb-3">
                 <h3 className="font-semibold text-gray-900">
                   #{ticket.id.substring(0, 8)}
                 </h3>
-                <Badge variant={statusColors[ticket.status]} size="sm">
-                  {ticket.status}
-                </Badge>
+                <div className="flex items-center gap-2">
+                  {hasResolutionBreach && (
+                    <Badge variant="danger" size="sm">
+                      SLA
+                    </Badge>
+                  )}
+                  {!hasResolutionBreach && hasResponseBreach && (
+                    <Badge variant="warning" size="sm">
+                      SLA
+                    </Badge>
+                  )}
+                  <Badge variant={statusColors[ticket.status]} size="sm">
+                    {ticket.status}
+                  </Badge>
+                </div>
               </div>
 
               <p className="text-sm text-gray-600 mb-3 line-clamp-2">
@@ -87,22 +154,144 @@ export default function StaffQueue() {
                   <span className="font-medium">{ticket.room?.number}</span>
                 </div>
                 <div className="flex items-center justify-between">
+                  <span className="text-gray-600">Department:</span>
+                  <span className="font-medium">{ticket.department?.name || 'N/A'}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-600">Category:</span>
+                  <span className="font-medium capitalize">{ticket.category?.replace('_', ' ') || 'N/A'}</span>
+                </div>
+                <div className="flex items-center justify-between">
                   <span className="text-gray-600">Priority:</span>
                   <Badge variant={priorityColors[ticket.priority]} size="sm">
                     {priorityLabels[ticket.priority] || ticket.priority}
                   </Badge>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-gray-600">Created:</span>
+                  <span className="text-gray-600">Status:</span>
+                  <select
+                    value={ticket.status}
+                    onClick={(e) => e.stopPropagation()}
+                    onChange={(e) => {
+                      e.stopPropagation();
+                      statusMutation.mutate({ id: ticket.id, status: e.target.value });
+                    }}
+                    className="rounded-md border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 text-sm"
+                  >
+                    <option value="new">New</option>
+                    <option value="doing">Doing</option>
+                    <option value="done">Done</option>
+                    <option value="canceled">Cancelled</option>
+                  </select>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-600">Updated:</span>
                   <span className="text-xs">
-                    {ticket.created_at ? format(new Date(ticket.created_at), 'MMM d, HH:mm') : 'N/A'}
+                    {ticket.updated_at ? format(new Date(ticket.updated_at), 'MMM d, HH:mm') : 'N/A'}
                   </span>
                 </div>
+              </div>
+
+              <div className="mt-4">
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleHistory(ticket.id);
+                  }}
+                >
+                  {showHistory ? 'Hide History' : 'Show History'}
+                </Button>
+              </div>
+
+              {showHistory && (
+                <TicketHistory
+                  ticketId={ticket.id}
+                  noteValue={noteDrafts[ticket.id] || ''}
+                  onNoteChange={(value) =>
+                    setNoteDrafts((prev) => ({ ...prev, [ticket.id]: value }))
+                  }
+                  onSaveNote={() => {
+                    const note = (noteDrafts[ticket.id] || '').trim();
+                    if (!note) return;
+                    noteMutation.mutate({ id: ticket.id, note });
+                  }}
+                />
+              )}
+            </div>
+          )})}
+        </div>
+      )}
+
+      {pagination?.last_page > 1 && (
+        <Pagination
+          currentPage={pagination.current_page || 1}
+          totalPages={pagination.last_page || 1}
+          onPageChange={(nextPage) => {
+            if (nextPage < 1 || nextPage > (pagination.last_page || 1)) return;
+            setPage(nextPage);
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+function TicketHistory({ ticketId, noteValue, onNoteChange, onSaveNote }) {
+  const { data, isLoading, refetch } = useQuery({
+    queryKey: ['ticket-events', ticketId],
+    queryFn: () => ticketsAPI.getTicketEvents(ticketId),
+    enabled: true,
+  });
+
+  const events = data?.data || data?.events?.data || [];
+
+  return (
+    <div
+      className="mt-4 border-t border-gray-200 pt-4 space-y-3"
+      onClick={(e) => e.stopPropagation()}
+    >
+      <div className="text-sm font-medium text-gray-900">History</div>
+      {isLoading ? (
+        <div className="text-sm text-gray-500">Loading history...</div>
+      ) : events.length === 0 ? (
+        <div className="text-sm text-gray-500">No events yet</div>
+      ) : (
+        <div className="space-y-2">
+          {events.slice(0, 5).map((event) => (
+            <div key={event.id} className="text-xs text-gray-600">
+              <div className="font-medium text-gray-800">
+                {event.event_type?.replace('_', ' ')} · {event.staff_user?.name || 'System'}
+              </div>
+              <div>{event.note}</div>
+              <div className="text-gray-400">
+                {event.created_at ? format(new Date(event.created_at), 'MMM d, HH:mm') : 'N/A'}
               </div>
             </div>
           ))}
         </div>
       )}
+
+      <div className="pt-2">
+        <div className="text-xs font-medium text-gray-700 mb-2">Add note</div>
+        <div className="flex items-center gap-2">
+          <Input
+            value={noteValue}
+            onChange={(e) => onNoteChange(e.target.value)}
+            placeholder="Add a note..."
+          />
+          <Button
+            size="sm"
+            onClick={() => {
+              onSaveNote();
+              refetch();
+            }}
+          >
+            Save note
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }

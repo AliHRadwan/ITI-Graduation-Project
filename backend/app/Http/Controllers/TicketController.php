@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Ticket;
 use App\Models\TicketEvent;
+use Illuminate\Support\Facades\Gate;
 
 class TicketController extends Controller
 {
@@ -34,6 +35,16 @@ class TicketController extends Controller
 
         if ($request->filled('start_date') && $request->filled('end_date')) {
             $query->whereBetween('created_at', [$request->start_date, $request->end_date]);
+        }
+
+        if ($request->filled('q')) {
+            $search = $request->q;
+            $query->where(function ($q) use ($search) {
+                $q->where('description', 'like', "%{$search}%")
+                    ->orWhere('category', 'like', "%{$search}%")
+                    ->orWhereHas('room', fn ($room) => $room->where('room_number', 'like', "%{$search}%"))
+                    ->orWhereHas('department', fn ($department) => $department->where('name', 'like', "%{$search}%"));
+            });
         }
 
         $tickets = $query
@@ -199,6 +210,13 @@ class TicketController extends Controller
         $validated = $request->validate([
             'note' => 'required|string|max:500',
         ]);
+
+        $user = $request->user();
+        if (!Gate::forUser($user)->allows('ticket.addNote', $ticket)) {
+            return response()->json([
+                'message' => 'You do not have permission to add a note to this ticket.',
+            ], 403);
+        }
 
         TicketEvent::create([
             'ticket_id' => $ticket->id,

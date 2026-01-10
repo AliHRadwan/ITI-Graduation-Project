@@ -27,6 +27,7 @@ export default function StaffMetrics() {
   const completedTickets = tickets?.filter((t) => t.status === 'done').length || 0;
   const activeTickets = tickets?.filter((t) => t.status === 'doing').length || 0;
   const completionRate = totalTickets > 0 ? (completedTickets / totalTickets) * 100 : 0;
+  const safeCompletionRate = Number.isFinite(completionRate) ? completionRate : 0;
 
   return (
     <div className="space-y-6">
@@ -62,20 +63,30 @@ export default function StaffMetrics() {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium text-gray-700">
-                  Completion Rate
-                </span>
-                <span className="text-sm font-semibold text-gray-900">
-                  {completionRate.toFixed(1)}%
-                </span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
-                <div
-                  className="bg-green-600 h-2 rounded-full transition-all"
-                  style={{ width: `${completionRate}%` }}
-                />
+            <div className="flex items-center justify-center">
+              <div className="relative h-36 w-36">
+                <svg viewBox="0 0 36 36" className="h-36 w-36">
+                  <path
+                    d="M18 2.0845
+                      a 15.9155 15.9155 0 0 1 0 31.831
+                      a 15.9155 15.9155 0 0 1 0 -31.831"
+                    fill="none"
+                    stroke="#e5e7eb"
+                    strokeWidth="3.5"
+                  />
+                  <path
+                    d="M18 2.0845
+                      a 15.9155 15.9155 0 0 1 0 31.831
+                      a 15.9155 15.9155 0 0 1 0 -31.831"
+                    fill="none"
+                    stroke="#16a34a"
+                    strokeWidth="3.5"
+                    strokeDasharray={`${safeCompletionRate.toFixed(1)}, 100`}
+                  />
+                </svg>
+                <div className="absolute inset-0 flex items-center justify-center text-lg font-semibold text-gray-700">
+                  {safeCompletionRate.toFixed(1)}%
+                </div>
               </div>
             </div>
           </div>

@@ -3,8 +3,34 @@
 @tailwind utilities;
 
 @layer base {
-  body {
-    @apply bg-gray-50 text-gray-900;
+  html,
+  body,
+  #root {
+    @apply bg-white text-slate-900 dark:bg-slate-950 dark:text-slate-100;
+  }
+}
+
+@layer utilities {
+  .dark .bg-white {
+    @apply bg-slate-950;
+  }
+  .dark .bg-gray-50 {
+    @apply bg-slate-900;
+  }
+  .dark .border-gray-200 {
+    @apply border-slate-800;
+  }
+  .dark .text-gray-900 {
+    @apply text-slate-100;
+  }
+  .dark .text-gray-700 {
+    @apply text-slate-200;
+  }
+  .dark .text-gray-600 {
+    @apply text-slate-300;
+  }
+  .dark .text-gray-500 {
+    @apply text-slate-400;
   }
 }
 

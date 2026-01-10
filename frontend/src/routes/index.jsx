@@ -1,6 +1,7 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import ProtectedRoute from '@/components/ProtectedRoute';
-import { ROLES } from '@/utils/permissions';
+import useAuthStore from '@/store/authStore';
+import { ROLES, isManagerOrAdmin } from '@/utils/permissions';
 
 // Auth
 import LoginPage from '@/features/auth/LoginPage';
@@ -18,11 +19,27 @@ import RoomList from '@/features/rooms/RoomList';
 import StaffList from '@/features/staff/StaffList';
 import DepartmentList from '@/features/staff/DepartmentList';
 import KnowledgeBaseList from '@/features/knowledge/KnowledgeBaseList';
+import AdminSettings from '@/features/settings/AdminSettings';
 
 // Staff Layout & Pages
 import StaffLayout from '@/components/layout/StaffLayout';
 import StaffQueue from '@/features/staff/StaffQueue';
 import StaffMetrics from '@/features/staff/StaffMetrics';
+import StaffSettings from '@/features/settings/StaffSettings';
+
+function RootRedirect() {
+  const { isAuthenticated, user } = useAuthStore();
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return isManagerOrAdmin(user) ? (
+    <Navigate to="/admin/dashboard" replace />
+  ) : (
+    <Navigate to="/staff/queue" replace />
+  );
+}
 
 const router = createBrowserRouter([
   {
@@ -39,7 +56,7 @@ const router = createBrowserRouter([
   },
   {
     path: '/',
-    element: <Navigate to="/admin/dashboard" replace />,
+    element: <RootRedirect />,
   },
   // Admin Routes
   {
@@ -86,13 +103,17 @@ const router = createBrowserRouter([
         path: 'knowledge-base',
         element: <KnowledgeBaseList />,
       },
+      {
+        path: 'settings',
+        element: <AdminSettings />,
+      },
     ],
   },
   // Staff Routes
   {
     path: '/staff',
     element: (
-      <ProtectedRoute>
+      <ProtectedRoute allowedRoles={[ROLES.STAFF, ROLES.READONLY]}>
         <StaffLayout />
       </ProtectedRoute>
     ),
@@ -113,9 +134,16 @@ const router = createBrowserRouter([
         path: 'metrics',
         element: <StaffMetrics />,
       },
+      {
+        path: 'settings',
+        element: <StaffSettings />,
+      },
+      {
+        path: 'tickets/:id',
+        element: <TicketDetail />,
+      },
     ],
   },
 ]);
 
 export default router;
-

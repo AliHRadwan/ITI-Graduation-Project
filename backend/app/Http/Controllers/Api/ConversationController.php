@@ -19,6 +19,7 @@ class ConversationController extends Controller
         $filters = $request->validated();
     
         $status  = $filters['status'] ?? null;
+        $search = $filters['q'] ?? null;
         $roomId  = $filters['room_id'] ?? null;
         $guestId = $filters['guest_id'] ?? null;
         $perPage = $filters['per_page'] ?? 3;
@@ -31,6 +32,14 @@ class ConversationController extends Controller
     
         $conversations = Conversation::query()
             ->with(['guestIdentity', 'room', 'lastMessage'])
+            ->when($search, function ($q) use ($search) {
+                $q->where(function ($query) use ($search) {
+                    $query->where('status', 'like', "%{$search}%")
+                        ->orWhereHas('guestIdentity', fn ($guest) => $guest->where('channel_user_id', 'like', "%{$search}%"))
+                        ->orWhereHas('room', fn ($room) => $room->where('room_number', 'like', "%{$search}%"))
+                        ->orWhereHas('lastMessage', fn ($message) => $message->where('content', 'like', "%{$search}%"));
+                });
+            })
             ->when($statusList, fn($q) => $q->whereIn('status', $statusList))
             ->when($roomId, fn($q) => $q->where('room_id', $roomId))
             ->when($guestId, fn($q) => $q->where('guest_identity_id', $guestId))

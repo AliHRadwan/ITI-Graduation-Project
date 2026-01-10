@@ -31,6 +31,14 @@ class StaffUserController extends Controller
             $query->onlyTrashed();
         }
 
+        if ($request->filled('q')) {
+            $search = $request->q;
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%");
+            });
+        }
+
         $users = $query
             ->with(['memberships.role', 'memberships.department'])
             ->paginate((int) $request->input('per_page', 5));

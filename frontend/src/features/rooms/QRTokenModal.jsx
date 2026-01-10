@@ -78,7 +78,7 @@ export default function QRTokenModal({ isOpen, onClose, room }) {
             <select
               value={expiresInDays}
               onChange={(e) => setExpiresInDays(Number(e.target.value))}
-              className="rounded-md border-gray-300"
+              className="rounded-md border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
             >
               <option value={1}>1 day</option>
               <option value={3}>3 days</option>
@@ -112,14 +112,14 @@ export default function QRTokenModal({ isOpen, onClose, room }) {
               {tokens.map((token) => (
                 <div
                   key={token.id}
-                  className="p-6 bg-white border border-gray-200 rounded-lg"
+                  className="p-6 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg"
                 >
                   <div className="flex flex-col md:flex-row gap-6">
                     {/* QR Code Display */}
                     <div className="flex flex-col items-center">
                       {token.deep_link ? (
                         <>
-                          <div className="p-4 bg-white border-2 border-gray-300 rounded-lg">
+                          <div className="p-4 bg-white dark:bg-gray-900 border-2 border-gray-300 dark:border-gray-700 rounded-lg">
                             <QRCodeSVG
                               id={`qr-${token.id}`}
                               value={token.deep_link}

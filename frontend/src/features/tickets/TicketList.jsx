@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { ticketsAPI, departmentsAPI } from '@/api';
-import { Button, Badge, Table, TableHead, TableBody, TableRow, TableHeader, TableCell, Spinner, EmptyState, Pagination } from '@/components/ui';
+import { Button, Badge, Table, TableHead, TableBody, TableRow, TableHeader, TableCell, Spinner, EmptyState, Pagination, Input } from '@/components/ui';
 import { PlusIcon, TicketIcon } from '@heroicons/react/24/outline';
 import { format } from 'date-fns';
 import CreateTicketModal from './CreateTicketModal';
@@ -39,10 +39,18 @@ export default function TicketList() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [page, setPage] = useState(1);
   const perPage = 3;
+  const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
 
   const { data, isLoading, refetch } = useQuery({
-    queryKey: ['tickets', filters, page],
-    queryFn: () => ticketsAPI.getTickets({ ...filters, page, per_page: perPage }),
+    queryKey: ['tickets', filters, page, debouncedSearch],
+    queryFn: () =>
+      ticketsAPI.getTickets({
+        ...filters,
+        page,
+        per_page: perPage,
+        q: debouncedSearch || undefined,
+      }),
     refetchInterval: 15000, // Refresh every 15 seconds
   });
 
@@ -60,6 +68,14 @@ export default function TicketList() {
     setPage(1);
   }, [filters]);
 
+  useEffect(() => {
+    const handle = setTimeout(() => {
+      setDebouncedSearch(searchTerm.trim());
+      setPage(1);
+    }, 400);
+    return () => clearTimeout(handle);
+  }, [searchTerm]);
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -75,12 +91,12 @@ export default function TicketList() {
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 p-4">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
           <select
             value={filters.status}
             onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-            className="rounded-md border-gray-300"
+            className="rounded-md border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
           >
             <option value="">All Status</option>
             <option value="new">New</option>
@@ -92,7 +108,7 @@ export default function TicketList() {
           <select
             value={filters.priority}
             onChange={(e) => setFilters({ ...filters, priority: e.target.value })}
-            className="rounded-md border-gray-300"
+            className="rounded-md border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
           >
             <option value="">All Priority</option>
             <option value="low">Low</option>
@@ -101,19 +117,16 @@ export default function TicketList() {
             <option value="urgent">Urgent</option>
           </select>
 
-          <input
-            type="text"
-            placeholder="Category"
-            value={filters.category}
-            onChange={(e) => setFilters({ ...filters, category: e.target.value })}
-            className="rounded-md border-gray-300"
+          <Input
+            placeholder="Search tickets..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
           />
-
 
           <select
             value={filters.department_id}
             onChange={(e) => setFilters({ ...filters, department_id: e.target.value })}
-            className="rounded-md border-gray-300"
+            className="rounded-md border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
           >
             <option value="">All Departments</option>
             {departments.map((department) => (
@@ -122,11 +135,17 @@ export default function TicketList() {
               </option>
             ))}
           </select>
+
+          <Input
+            placeholder="Category"
+            value={filters.category}
+            onChange={(e) => setFilters({ ...filters, category: e.target.value })}
+          />
         </div>
       </div>
 
       {/* Tickets Table */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+      <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-800">
         {isLoading ? (
           <div className="p-12">
             <Spinner size="lg" />
@@ -135,7 +154,7 @@ export default function TicketList() {
           <EmptyState
             icon={TicketIcon}
             title="No tickets found"
-            description="Create a new ticket to get started"
+            description={debouncedSearch ? 'No results found' : 'Create a new ticket to get started'}
             action={
               <Button onClick={() => setShowCreateModal(true)}>
                 <PlusIcon className="h-5 w-5 mr-2" />

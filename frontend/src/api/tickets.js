@@ -41,4 +41,24 @@ export const ticketsAPI = {
     const response = await apiClient.post(`/tickets/${id}/assign`, { actor_staff_user_id: staffId });
     return response.data;
   },
+
+  addNote: async (id, note) => {
+    const response = await apiClient.post(`/tickets/${id}/notes`, { note });
+    return response.data;
+  },
+
+  getTicketEvents: async (id, params) => {
+    const response = await apiClient.get(`/tickets/${id}/events`, { params });
+    return response.data.events || response.data;
+  },
+
+  getTicketRating: async (id) => {
+    const response = await apiClient.get(`/tickets/${id}/rating`);
+    return response.data.rating || response.data;
+  },
+
+  getSlaBreaches: async () => {
+    const response = await apiClient.get('/sla/breaches');
+    return response.data;
+  },
 };
