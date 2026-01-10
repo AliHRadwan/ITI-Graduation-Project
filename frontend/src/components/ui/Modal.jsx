@@ -1,5 +1,5 @@
-import { Dialog, Transition } from '@headlessui/react';
-import { Fragment } from 'react';
+import { Dialog } from '@headlessui/react';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 
 export default function Modal({
@@ -18,34 +18,31 @@ export default function Modal({
     full: 'max-w-full mx-4',
   };
 
-  return (
-    <Transition appear show={isOpen} as={Fragment}>
-      <Dialog as="div" className="relative z-50" onClose={onClose}>
-        <Transition.Child
-          as={Fragment}
-          enter="ease-out duration-300"
-          enterFrom="opacity-0"
-          enterTo="opacity-100"
-          leave="ease-in duration-200"
-          leaveFrom="opacity-100"
-          leaveTo="opacity-0"
-        >
-          <div className="fixed inset-0 bg-black bg-opacity-40" />
-        </Transition.Child>
+  const shouldReduceMotion = useReducedMotion();
+  const overlayTransition = { duration: shouldReduceMotion ? 0 : 0.2, ease: 'easeOut' };
+  const panelTransition = { duration: shouldReduceMotion ? 0 : 0.2, ease: 'easeOut' };
 
-        <div className="fixed inset-0 overflow-y-auto">
-          <div className="flex min-h-full items-center justify-center p-4 text-center">
-            <Transition.Child
-              as={Fragment}
-              enter="ease-out duration-300"
-              enterFrom="opacity-0 scale-95"
-              enterTo="opacity-100 scale-100"
-              leave="ease-in duration-200"
-              leaveFrom="opacity-100 scale-100"
-              leaveTo="opacity-0 scale-95"
-            >
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <Dialog as="div" className="relative z-50" onClose={onClose} open={isOpen}>
+          <motion.div
+            className="fixed inset-0 bg-black bg-opacity-40"
+            initial={shouldReduceMotion ? false : { opacity: 0 }}
+            animate={shouldReduceMotion ? false : { opacity: 1 }}
+            exit={shouldReduceMotion ? false : { opacity: 0 }}
+            transition={overlayTransition}
+          />
+
+          <div className="fixed inset-0 overflow-y-auto">
+            <div className="flex min-h-full items-center justify-center p-4 text-center">
               <Dialog.Panel
+                as={motion.div}
                 className={`w-full ${sizeClasses[size]} transform overflow-hidden rounded-lg bg-white dark:bg-gray-900 text-left align-middle shadow-xl transition-all`}
+                initial={shouldReduceMotion ? false : { opacity: 0, scale: 0.96, y: 8 }}
+                animate={shouldReduceMotion ? false : { opacity: 1, scale: 1, y: 0 }}
+                exit={shouldReduceMotion ? false : { opacity: 0, scale: 0.96, y: 8 }}
+                transition={panelTransition}
               >
                 {(title || showCloseButton) && (
                   <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-800">
@@ -70,10 +67,10 @@ export default function Modal({
                 )}
                 <div className="px-6 py-4">{children}</div>
               </Dialog.Panel>
-            </Transition.Child>
+            </div>
           </div>
-        </div>
-      </Dialog>
-    </Transition>
+        </Dialog>
+      )}
+    </AnimatePresence>
   );
 }

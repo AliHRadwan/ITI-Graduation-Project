@@ -1,3 +1,5 @@
+import { motion, useReducedMotion } from 'framer-motion';
+
 export default function Table({ children, className = '' }) {
   return (
     <div className="overflow-x-auto">
@@ -17,13 +19,23 @@ export function TableBody({ children }) {
 }
 
 export function TableRow({ children, className = '', onClick }) {
+  const shouldReduceMotion = useReducedMotion();
+  const motionProps = shouldReduceMotion
+    ? {}
+    : {
+        initial: { opacity: 0, y: 4 },
+        animate: { opacity: 1, y: 0 },
+        transition: { duration: 0.2, ease: 'easeOut' },
+      };
+
   return (
-    <tr
+    <motion.tr
       className={`${onClick ? 'cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800' : ''} ${className}`}
       onClick={onClick}
+      {...motionProps}
     >
       {children}
-    </tr>
+    </motion.tr>
   );
 }
 

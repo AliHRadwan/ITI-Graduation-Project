@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Outlet, Link, useLocation } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import {
   QueueListIcon,
   ChatBubbleLeftRightIcon,
@@ -9,6 +9,7 @@ import {
   XMarkIcon,
 } from '@heroicons/react/24/outline';
 import Header from './Header';
+import AnimatedOutlet from '@/components/animations/AnimatedOutlet';
 
 const navigation = [
   { name: 'My Queue', href: '/staff/queue', icon: QueueListIcon },
@@ -76,7 +77,7 @@ export default function StaffLayout() {
       <div className="lg:pl-64">
         <Header onMenuClick={() => setSidebarOpen(true)} />
         <main className="p-6">
-          <Outlet />
+          <AnimatedOutlet />
         </main>
       </div>
     </div>

@@ -8,6 +8,7 @@ import useAuthStore from '@/store/authStore';
 import { Button, Input, Card } from '@/components/ui';
 import { isAdmin, isManagerOrAdmin } from '@/utils/permissions';
 import { useTheme } from '@/context/ThemeContext';
+import PageTransition from '@/components/animations/PageTransition';
 
 const loginSchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -48,7 +49,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950 px-4">
+    <PageTransition className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950 px-4">
       <div className="w-full max-w-md">
         <div className="flex justify-end mb-3">
           <button
@@ -104,6 +105,6 @@ export default function LoginPage() {
           </form>
         </Card>
       </div>
-    </div>
+    </PageTransition>
   );
 }

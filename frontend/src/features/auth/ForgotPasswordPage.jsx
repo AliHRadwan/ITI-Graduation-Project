@@ -7,6 +7,7 @@ import toast from 'react-hot-toast';
 import { authAPI } from '@/api';
 import { Button, Input, Card } from '@/components/ui';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
+import PageTransition from '@/components/animations/PageTransition';
 
 const forgotPasswordSchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -38,11 +39,11 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 px-4">
-      <Card className="w-full max-w-md p-8">
+    <PageTransition className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950 px-4">
+      <Card className="w-full max-w-md p-8 dark:bg-slate-900 dark:border-slate-800">
         <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-gray-900">Forgot Password</h1>
-          <p className="text-gray-600 mt-2">
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Forgot Password</h1>
+          <p className="text-slate-600 dark:text-slate-400 mt-2">
             {emailSent
               ? 'Check your email for reset instructions'
               : 'Enter your email to receive reset instructions'}
@@ -71,7 +72,7 @@ export default function ForgotPasswordPage() {
             <div className="text-center">
               <Link
                 to="/login"
-                className="text-sm text-blue-600 hover:text-blue-500 inline-flex items-center"
+                className="text-sm text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300 inline-flex items-center"
               >
                 <ArrowLeftIcon className="h-4 w-4 mr-1" />
                 Back to login
@@ -86,7 +87,7 @@ export default function ForgotPasswordPage() {
             <div className="mt-4">
               <Link
                 to="/login"
-                className="text-sm text-blue-600 hover:text-blue-500 inline-flex items-center"
+                className="text-sm text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300 inline-flex items-center"
               >
                 <ArrowLeftIcon className="h-4 w-4 mr-1" />
                 Back to login
@@ -95,7 +96,6 @@ export default function ForgotPasswordPage() {
           </div>
         )}
       </Card>
-    </div>
+    </PageTransition>
   );
 }
-

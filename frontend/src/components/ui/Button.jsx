@@ -38,7 +38,8 @@ const Button = forwardRef(
           inline-flex items-center justify-center
           font-medium rounded-md
           focus:outline-none focus:ring-2 focus:ring-offset-2
-          transition-colors duration-200
+          transition-colors duration-200 transition-transform
+          active:scale-95
           disabled:opacity-50 disabled:cursor-not-allowed
           ${variantStyles[variant]}
           ${sizeStyles[size]}
