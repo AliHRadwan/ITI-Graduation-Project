@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { departmentsAPI } from '@/api';
-import { Button, Badge, Table, TableHead, TableBody, TableRow, TableHeader, TableCell, Spinner, EmptyState, Pagination } from '@/components/ui';
+import { Button, Badge, Table, TableHead, TableBody, TableRow, TableHeader, TableCell, Spinner, EmptyState, Pagination, Input } from '@/components/ui';
 import { PlusIcon, BuildingOfficeIcon } from '@heroicons/react/24/outline';
 import CreateDepartmentModal from './CreateDepartmentModal';
 import EditDepartmentModal from './EditDepartmentModal';
@@ -14,14 +14,24 @@ export default function DepartmentList() {
   const [selectedDepartment, setSelectedDepartment] = useState(null);
   const [page, setPage] = useState(1);
   const perPage = 5;
+  const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
 
   const { data, isLoading } = useQuery({
-    queryKey: ['departments', page],
-    queryFn: () => departmentsAPI.getDepartments({ page, per_page: perPage }),
+    queryKey: ['departments', page, debouncedSearch],
+    queryFn: () => departmentsAPI.getDepartments({ page, per_page: perPage, q: debouncedSearch || undefined }),
   });
 
   const departments = data?.items || [];
   const pagination = data?.pagination || null;
+
+  useEffect(() => {
+    const handle = setTimeout(() => {
+      setDebouncedSearch(searchTerm.trim());
+      setPage(1);
+    }, 400);
+    return () => clearTimeout(handle);
+  }, [searchTerm]);
 
   const deactivateMutation = useMutation({
     mutationFn: (id) => departmentsAPI.deactivateDepartment(id),
@@ -67,6 +77,21 @@ export default function DepartmentList() {
         </Button>
       </div>
 
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="w-full sm:max-w-xs">
+            <Input
+              placeholder="Search departments..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+          <div className="text-sm text-gray-500">
+            {departments.length} result{departments.length === 1 ? '' : 's'}
+          </div>
+        </div>
+      </div>
+
       {/* Departments Table */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200">
         {isLoading ? (
@@ -77,7 +102,7 @@ export default function DepartmentList() {
           <EmptyState
             icon={BuildingOfficeIcon}
             title="No departments"
-            description="Create departments to organize your staff"
+            description={debouncedSearch ? 'No results found' : 'Create departments to organize your staff'}
             action={
               <Button onClick={() => setShowCreateModal(true)}>
                 <PlusIcon className="h-5 w-5 mr-2" />

@@ -16,6 +16,7 @@ class ListConversationsRequest extends FormRequest
         return [
             'status' => 'nullable',
             'status.*' => 'in:open,handoff,closed,OPEN,HANDOFF,CLOSED',
+            'q' => 'nullable|string',
             'room_id' => 'nullable|uuid',
             'guest_id' => 'nullable|uuid',
             'per_page' => 'nullable|integer|min:1|max:100',

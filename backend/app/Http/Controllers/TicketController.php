@@ -36,6 +36,16 @@ class TicketController extends Controller
             $query->whereBetween('created_at', [$request->start_date, $request->end_date]);
         }
 
+        if ($request->filled('q')) {
+            $search = $request->q;
+            $query->where(function ($q) use ($search) {
+                $q->where('description', 'like', "%{$search}%")
+                    ->orWhere('category', 'like', "%{$search}%")
+                    ->orWhereHas('room', fn ($room) => $room->where('room_number', 'like', "%{$search}%"))
+                    ->orWhereHas('department', fn ($department) => $department->where('name', 'like', "%{$search}%"));
+            });
+        }
+
         $tickets = $query
             ->orderByDesc('updated_at')
             ->orderByDesc('created_at')

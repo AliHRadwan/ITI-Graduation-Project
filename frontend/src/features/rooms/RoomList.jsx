@@ -2,8 +2,8 @@ import { useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { roomsAPI } from '@/api';
-import { Button, Badge, Spinner, EmptyState, Pagination } from '@/components/ui';
-import { PlusIcon, BuildingOfficeIcon, QrCodeIcon } from '@heroicons/react/24/outline';
+import { Button, Badge, Spinner, EmptyState, Pagination, Input } from '@/components/ui';
+import { PlusIcon, BuildingOfficeIcon, QrCodeIcon, PencilSquareIcon, TrashIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import CreateRoomModal from './CreateRoomModal';
 import QRTokenModal from './QRTokenModal';
 import EditRoomModal from './EditRoomModal';
@@ -23,6 +23,7 @@ export default function RoomList() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [page, setPage] = useState(1);
   const perPage = 8;
+  const [searchTerm, setSearchTerm] = useState('');
 
   const { data, isLoading } = useQuery({
     queryKey: ['rooms', page],
@@ -39,6 +40,11 @@ export default function RoomList() {
     () => [...rooms].sort((a, b) => collator.compare(a.room_number, b.room_number)),
     [rooms, collator]
   );
+  const filteredRooms = useMemo(() => {
+    if (!searchTerm) return sortedRooms;
+    const needle = searchTerm.trim().toLowerCase();
+    return sortedRooms.filter((room) => room.room_number?.toLowerCase().includes(needle));
+  }, [sortedRooms, searchTerm]);
 
   const deleteMutation = useMutation({
     mutationFn: (id) => roomsAPI.deleteRoom(id),
@@ -87,8 +93,26 @@ export default function RoomList() {
         </Button>
       </div>
 
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="relative w-full sm:max-w-xs">
+            <MagnifyingGlassIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            <Input
+              placeholder="Search by room number"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-9"
+              containerClassName="w-full"
+            />
+          </div>
+          <div className="text-sm text-gray-500">
+            {filteredRooms.length} room{filteredRooms.length === 1 ? '' : 's'}
+          </div>
+        </div>
+      </div>
+
       {/* Room Grid */}
-      {!rooms || rooms.length === 0 ? (
+      {!filteredRooms || filteredRooms.length === 0 ? (
         <EmptyState
           icon={BuildingOfficeIcon}
           title="No rooms found"
@@ -102,48 +126,50 @@ export default function RoomList() {
         />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {sortedRooms.map((room) => (
+          {filteredRooms.map((room) => (
             <div
               key={room.id}
-              className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow"
+              className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 min-h-[180px] hover:shadow-md transition-shadow"
             >
-              <div className="flex items-start justify-between mb-4">
-                <div>
-                  <h3 className="text-xl font-bold text-gray-900">
+              <div className="flex items-start justify-between">
+                <div className="space-y-1">
+                  <div className="text-xs uppercase tracking-wide text-gray-500">Room</div>
+                  <div className="text-2xl font-semibold text-gray-900">
                     {room.room_number}
-                  </h3>
+                  </div>
                 </div>
                 <Badge variant={statusColors[room.status || 'available']}>
                   {room.status || 'available'}
                 </Badge>
               </div>
 
-              <div className="flex gap-2">
+              <div className="mt-6 flex items-center justify-between">
                 <Button
-                  size="sm"
+                  size="xs"
                   variant="secondary"
-                  fullWidth
                   onClick={() => handleQRClick(room)}
                 >
                   <QrCodeIcon className="h-4 w-4 mr-1" />
                   QR Code
                 </Button>
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  fullWidth
-                  onClick={() => handleEditClick(room)}
-                >
-                  Edit
-                </Button>
-                <Button
-                  size="sm"
-                  variant="danger"
-                  fullWidth
-                  onClick={() => handleDeleteClick(room)}
-                >
-                  Delete
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="xs"
+                    variant="ghost"
+                    onClick={() => handleEditClick(room)}
+                    aria-label={`Edit room ${room.room_number}`}
+                  >
+                    <PencilSquareIcon className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    size="xs"
+                    variant="ghost"
+                    onClick={() => handleDeleteClick(room)}
+                    aria-label={`Delete room ${room.room_number}`}
+                  >
+                    <TrashIcon className="h-4 w-4 text-red-600" />
+                  </Button>
+                </div>
               </div>
             </div>
           ))}

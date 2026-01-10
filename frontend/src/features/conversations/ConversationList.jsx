@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { conversationsAPI } from '@/api';
-import { Badge, Spinner, EmptyState, Tabs, TabList, TabButton, TabPanels, TabPanel, Pagination } from '@/components/ui';
+import { Badge, Spinner, EmptyState, Tabs, TabList, TabButton, TabPanels, TabPanel, Pagination, Input } from '@/components/ui';
 import { ChatBubbleLeftRightIcon } from '@heroicons/react/24/outline';
 import { format } from 'date-fns';
 
@@ -17,16 +17,20 @@ export default function ConversationList() {
   const [activeTab, setActiveTab] = useState(0);
   const [page, setPage] = useState(1);
   const perPage = 3;
+  const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
 
   const statuses = [null, 'OPEN', 'HANDOFF', 'CLOSED'];
   const status = statuses[activeTab];
   const statusLabel = status || 'ALL';
 
   const { data, isLoading } = useQuery({
-    queryKey: ['conversations', statusLabel, page],
+    queryKey: ['conversations', statusLabel, page, debouncedSearch],
     queryFn: () =>
       conversationsAPI.getConversations(
-        status ? { status, page, per_page: perPage } : { page, per_page: perPage }
+        status
+          ? { status, page, per_page: perPage, q: debouncedSearch || undefined }
+          : { page, per_page: perPage, q: debouncedSearch || undefined }
       ),
     refetchInterval: 10000, // Refresh every 10 seconds
   });
@@ -37,6 +41,14 @@ export default function ConversationList() {
   useEffect(() => {
     setPage(1);
   }, [activeTab]);
+
+  useEffect(() => {
+    const handle = setTimeout(() => {
+      setDebouncedSearch(searchTerm.trim());
+      setPage(1);
+    }, 400);
+    return () => clearTimeout(handle);
+  }, [searchTerm]);
 
   const sortedConversations = useMemo(() => {
     return [...conversations].sort((a, b) => {
@@ -63,7 +75,11 @@ export default function ConversationList() {
         <EmptyState
           icon={ChatBubbleLeftRightIcon}
           title="No conversations"
-          description={`No ${statusLabel} conversations at the moment`}
+          description={
+            debouncedSearch
+              ? 'No results found'
+              : `No ${statusLabel} conversations at the moment`
+          }
         />
       );
     }
@@ -121,12 +137,21 @@ export default function ConversationList() {
 
       <div className="bg-white rounded-lg shadow-sm border border-gray-200">
         <Tabs selectedIndex={activeTab} onChange={setActiveTab}>
-          <TabList>
-            <TabButton>All ({conversations?.length || 0})</TabButton>
-            <TabButton>Open</TabButton>
-            <TabButton>Handoff</TabButton>
-            <TabButton>Closed</TabButton>
-          </TabList>
+          <div className="flex flex-col gap-3 border-b border-gray-200 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+            <TabList className="border-b-0">
+              <TabButton>All ({conversations?.length || 0})</TabButton>
+              <TabButton>Open</TabButton>
+              <TabButton>Handoff</TabButton>
+              <TabButton>Closed</TabButton>
+            </TabList>
+            <div className="w-full sm:max-w-xs">
+              <Input
+                placeholder="Search conversations..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+          </div>
           <TabPanels>
             <TabPanel>{renderConversations(sortedConversations)}</TabPanel>
             <TabPanel>{renderConversations(sortedConversations)}</TabPanel>

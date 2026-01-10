@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { staffAPI } from '@/api';
-import { Button, Badge, Table, TableHead, TableBody, TableRow, TableHeader, TableCell, Spinner, EmptyState, Pagination } from '@/components/ui';
+import { Button, Badge, Table, TableHead, TableBody, TableRow, TableHeader, TableCell, Spinner, EmptyState, Pagination, Input } from '@/components/ui';
 import { PlusIcon, UsersIcon } from '@heroicons/react/24/outline';
 import InviteStaffModal from './InviteStaffModal';
 import EditStaffModal from './EditStaffModal';
@@ -14,14 +14,24 @@ export default function StaffList() {
   const [selectedUser, setSelectedUser] = useState(null);
   const [page, setPage] = useState(1);
   const perPage = 5;
+  const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
 
   const { data, isLoading } = useQuery({
-    queryKey: ['staff-users', page],
-    queryFn: () => staffAPI.getUsers({ page, per_page: perPage }),
+    queryKey: ['staff-users', page, debouncedSearch],
+    queryFn: () => staffAPI.getUsers({ page, per_page: perPage, q: debouncedSearch || undefined }),
   });
 
   const staff = data?.items || [];
   const pagination = data?.pagination || null;
+
+  useEffect(() => {
+    const handle = setTimeout(() => {
+      setDebouncedSearch(searchTerm.trim());
+      setPage(1);
+    }, 400);
+    return () => clearTimeout(handle);
+  }, [searchTerm]);
 
   const deactivateMutation = useMutation({
     mutationFn: (id) => staffAPI.deactivateUser(id),
@@ -76,6 +86,21 @@ export default function StaffList() {
         </Button>
       </div>
 
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="w-full sm:max-w-xs">
+            <Input
+              placeholder="Search staff..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+          <div className="text-sm text-gray-500">
+            {staff.length} result{staff.length === 1 ? '' : 's'}
+          </div>
+        </div>
+      </div>
+
       {/* Staff Table */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200">
         {isLoading ? (
@@ -86,7 +111,7 @@ export default function StaffList() {
           <EmptyState
             icon={UsersIcon}
             title="No staff members"
-            description="Invite staff members to get started"
+            description={debouncedSearch ? 'No results found' : 'Invite staff members to get started'}
             action={
               <Button onClick={() => setShowInviteModal(true)}>
                 <PlusIcon className="h-5 w-5 mr-2" />
