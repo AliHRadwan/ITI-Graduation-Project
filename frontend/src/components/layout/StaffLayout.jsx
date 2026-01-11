@@ -11,6 +11,7 @@ import {
 } from '@heroicons/react/24/outline';
 import Header from './Header';
 import AnimatedOutlet from '@/components/animations/AnimatedOutlet';
+import { useNotifications } from '@/context/NotificationsContext';
 
 const navigation = [
   { name: 'My Queue', href: '/staff/queue', icon: QueueListIcon },
@@ -23,6 +24,7 @@ const navigation = [
 export default function StaffLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
+  const { counts } = useNotifications();
 
   return (
     <div className="min-h-screen bg-white text-slate-900 dark:bg-slate-950 dark:text-slate-100">
@@ -53,6 +55,15 @@ export default function StaffLayout() {
         <nav className="mt-6 px-3">
           {navigation.map((item) => {
             const isActive = location.pathname.startsWith(item.href);
+            const badge =
+              item.href === '/staff/queue'
+                ? counts.tickets
+                : item.href === '/staff/conversations'
+                ? counts.conversations
+                : item.href === '/staff/action-center'
+                ? counts.sla + counts.logs
+                : 0;
+
             return (
               <Link
                 key={item.name}
@@ -69,7 +80,12 @@ export default function StaffLayout() {
                   }`}
                 />
                 <item.icon className="h-5 w-5 mr-3 transition-transform duration-200 group-hover:translate-x-0.5" />
-                {item.name}
+                <span className="flex-1">{item.name}</span>
+                {badge > 0 && (
+                  <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded-full bg-blue-600 text-white">
+                    {badge}
+                  </span>
+                )}
               </Link>
             );
           })}
