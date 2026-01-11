@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { AskRequest, AskResponse } from '../types/chat';
 
-const API_BASE_URL = 'http://127.0.0.1:8002';
+const API_BASE_URL = 'http://127.0.0.1:8000';
 
 export async function askQuestion(request: AskRequest): Promise<AskResponse> {
   const response = await axios.post<AskResponse>(`${API_BASE_URL}/ask`, {
