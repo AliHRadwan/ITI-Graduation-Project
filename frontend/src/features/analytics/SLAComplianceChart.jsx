@@ -8,8 +8,10 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
+import { useReducedMotion } from 'framer-motion';
 
 export default function SLAComplianceChart({ data }) {
+  const shouldReduceMotion = useReducedMotion();
   if (!data || data.length === 0) {
     return (
       <div className="h-64 flex items-center justify-center text-gray-500">
@@ -26,10 +28,21 @@ export default function SLAComplianceChart({ data }) {
         <YAxis />
         <Tooltip />
         <Legend />
-        <Bar dataKey="compliant" fill="#10b981" name="Compliant" />
-        <Bar dataKey="breached" fill="#ef4444" name="Breached" />
+        <Bar
+          dataKey="compliant"
+          fill="#10b981"
+          name="Compliant"
+          isAnimationActive={!shouldReduceMotion}
+          animationDuration={400}
+        />
+        <Bar
+          dataKey="breached"
+          fill="#ef4444"
+          name="Breached"
+          isAnimationActive={!shouldReduceMotion}
+          animationDuration={400}
+        />
       </BarChart>
     </ResponsiveContainer>
   );
 }
-

@@ -1,12 +1,14 @@
 import { useQuery } from '@tanstack/react-query';
 import { ticketsAPI } from '@/api';
 import { Card, CardHeader, CardTitle, CardContent, Spinner } from '@/components/ui';
+import { useReducedMotion } from 'framer-motion';
 import useAuthStore from '@/store/authStore';
 import MetricCard from '../analytics/MetricCard';
 import { TicketIcon, CheckCircleIcon, ClockIcon } from '@heroicons/react/24/outline';
 
 export default function StaffMetrics() {
   const user = useAuthStore((state) => state.user);
+  const shouldReduceMotion = useReducedMotion();
 
   const { data, isLoading } = useQuery({
     queryKey: ['my-tickets-all', user?.id],
@@ -28,6 +30,7 @@ export default function StaffMetrics() {
   const activeTickets = tickets?.filter((t) => t.status === 'doing').length || 0;
   const completionRate = totalTickets > 0 ? (completedTickets / totalTickets) * 100 : 0;
   const safeCompletionRate = Number.isFinite(completionRate) ? completionRate : 0;
+  const ringClass = shouldReduceMotion ? '' : 'transition-[stroke-dasharray] duration-500 ease-out';
 
   return (
     <div className="space-y-6">
@@ -82,6 +85,7 @@ export default function StaffMetrics() {
                     stroke="#16a34a"
                     strokeWidth="3.5"
                     strokeDasharray={`${safeCompletionRate.toFixed(1)}, 100`}
+                    className={ringClass}
                   />
                 </svg>
                 <div className="absolute inset-0 flex items-center justify-center text-lg font-semibold text-gray-700">
