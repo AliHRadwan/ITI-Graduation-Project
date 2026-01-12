@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { slaAPI, departmentsAPI, authAPI } from '@/api';
+import { slaAPI, departmentsAPI, authAPI, proactiveRulesAPI, routingRulesAPI } from '@/api';
 import { Card, CardHeader, CardTitle, CardContent, Button, Input, Modal, Table, TableHead, TableBody, TableRow, TableHeader, TableCell, Spinner, Pagination, Tabs, TabList, TabButton, TabPanels, TabPanel, Badge } from '@/components/ui';
 import toast from 'react-hot-toast';
 import { useTheme } from '@/context/ThemeContext';
@@ -14,18 +14,49 @@ const emptyPolicy = {
   resolution_minutes: '',
 };
 
+const emptyProactiveRule = {
+  id: null,
+  trigger_type: 'ticket_created',
+  trigger_config: '{}',
+  message_template: '',
+  is_active: true,
+};
+
+const emptyRoutingRule = {
+  id: null,
+  department_id: '',
+  match_category: '',
+  priority_default: 'low',
+  is_active: true,
+};
+
 export default function AdminSettings() {
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState(0);
   const [page, setPage] = useState(1);
+  const [routingPage, setRoutingPage] = useState(1);
   const [showPolicyModal, setShowPolicyModal] = useState(false);
   const [policyForm, setPolicyForm] = useState(emptyPolicy);
+  const [showProactiveModal, setShowProactiveModal] = useState(false);
+  const [proactiveForm, setProactiveForm] = useState(emptyProactiveRule);
+  const [showRoutingModal, setShowRoutingModal] = useState(false);
+  const [routingForm, setRoutingForm] = useState(emptyRoutingRule);
   const { theme, setTheme } = useTheme();
   const localUser = useAuthStore((state) => state.user);
 
   const { data: policiesData, isLoading } = useQuery({
     queryKey: ['sla-policies', page],
     queryFn: () => slaAPI.getPolicies({ page }),
+  });
+
+  const { data: proactiveRulesData, isLoading: proactiveLoading } = useQuery({
+    queryKey: ['proactive-rules'],
+    queryFn: proactiveRulesAPI.getRules,
+  });
+
+  const { data: routingRulesData, isLoading: routingLoading } = useQuery({
+    queryKey: ['routing-rules', routingPage],
+    queryFn: () => routingRulesAPI.getRules({ page: routingPage }),
   });
 
   const { data: meData } = useQuery({
@@ -48,6 +79,9 @@ export default function AdminSettings() {
   const departments = departmentsData?.items || [];
   const user = meData?.user || meData || localUser;
   const memberships = user?.memberships || [];
+  const proactiveRules = proactiveRulesData || [];
+  const routingRules = routingRulesData?.items || [];
+  const routingPagination = routingRulesData?.pagination || null;
 
   const handleOpenCreate = () => {
     setPolicyForm(emptyPolicy);
@@ -62,6 +96,38 @@ export default function AdminSettings() {
       resolution_minutes: policy.resolution_minutes ?? '',
     });
     setShowPolicyModal(true);
+  };
+
+  const handleOpenProactiveCreate = () => {
+    setProactiveForm(emptyProactiveRule);
+    setShowProactiveModal(true);
+  };
+
+  const handleOpenProactiveEdit = (rule) => {
+    setProactiveForm({
+      id: rule.id,
+      trigger_type: rule.trigger_type || 'ticket_created',
+      trigger_config: JSON.stringify(rule.trigger_config || {}, null, 2),
+      message_template: rule.message_template || '',
+      is_active: rule.is_active ?? true,
+    });
+    setShowProactiveModal(true);
+  };
+
+  const handleOpenRoutingCreate = () => {
+    setRoutingForm(emptyRoutingRule);
+    setShowRoutingModal(true);
+  };
+
+  const handleOpenRoutingEdit = (rule) => {
+    setRoutingForm({
+      id: rule.id,
+      department_id: rule.department_id,
+      match_category: rule.match_category,
+      priority_default: rule.priority_default,
+      is_active: rule.is_active ?? true,
+    });
+    setShowRoutingModal(true);
   };
 
   const policyMutation = useMutation({
@@ -95,6 +161,110 @@ export default function AdminSettings() {
     onError: () => toast.error('Failed to deactivate policy'),
   });
 
+  const activateMutation = useMutation({
+    mutationFn: (id) => slaAPI.updatePolicy(id, { is_active: true }),
+    onSuccess: () => {
+      toast.success('Policy activated');
+      queryClient.invalidateQueries(['sla-policies']);
+    },
+    onError: () => toast.error('Failed to activate policy'),
+  });
+
+  const proactiveMutation = useMutation({
+    mutationFn: (payload) => {
+      let parsedConfig = {};
+      try {
+        parsedConfig = payload.trigger_config ? JSON.parse(payload.trigger_config) : {};
+      } catch (error) {
+        throw new Error('Trigger config must be valid JSON');
+      }
+      const data = {
+        trigger_type: payload.trigger_type,
+        trigger_config: parsedConfig,
+        message_template: payload.message_template,
+        is_active: payload.is_active,
+      };
+      if (payload.id) {
+        return proactiveRulesAPI.updateRule(payload.id, data);
+      }
+      return proactiveRulesAPI.createRule(data);
+    },
+    onSuccess: () => {
+      toast.success('Proactive rule saved');
+      setShowProactiveModal(false);
+      queryClient.invalidateQueries(['proactive-rules']);
+    },
+    onError: (error) => {
+      toast.error(error.message || 'Failed to save proactive rule');
+    },
+  });
+
+  const proactiveDeactivateMutation = useMutation({
+    mutationFn: (id) => proactiveRulesAPI.deactivateRule(id),
+    onSuccess: () => {
+      toast.success('Rule deactivated');
+      queryClient.invalidateQueries(['proactive-rules']);
+    },
+    onError: () => toast.error('Failed to deactivate rule'),
+  });
+
+  const proactiveActivateMutation = useMutation({
+    mutationFn: (id) => proactiveRulesAPI.updateRule(id, { is_active: true }),
+    onSuccess: () => {
+      toast.success('Rule activated');
+      queryClient.invalidateQueries(['proactive-rules']);
+    },
+    onError: () => toast.error('Failed to activate rule'),
+  });
+
+  const proactiveDeleteMutation = useMutation({
+    mutationFn: (id) => proactiveRulesAPI.deleteRule(id),
+    onSuccess: () => {
+      toast.success('Rule deleted');
+      queryClient.invalidateQueries(['proactive-rules']);
+    },
+    onError: () => toast.error('Failed to delete rule'),
+  });
+
+  const routingMutation = useMutation({
+    mutationFn: (payload) => {
+      const data = {
+        department_id: payload.department_id,
+        match_category: payload.match_category,
+        priority_default: payload.priority_default,
+        is_active: payload.is_active,
+      };
+      if (payload.id) {
+        return routingRulesAPI.updateRule(payload.id, data);
+      }
+      return routingRulesAPI.createRule(data);
+    },
+    onSuccess: () => {
+      toast.success('Routing rule saved');
+      setShowRoutingModal(false);
+      queryClient.invalidateQueries(['routing-rules']);
+    },
+    onError: () => toast.error('Failed to save routing rule'),
+  });
+
+  const routingDeactivateMutation = useMutation({
+    mutationFn: (id) => routingRulesAPI.deactivateRule(id),
+    onSuccess: () => {
+      toast.success('Rule deactivated');
+      queryClient.invalidateQueries(['routing-rules']);
+    },
+    onError: () => toast.error('Failed to deactivate rule'),
+  });
+
+  const routingActivateMutation = useMutation({
+    mutationFn: (id) => routingRulesAPI.updateRule(id, { is_active: true }),
+    onSuccess: () => {
+      toast.success('Rule activated');
+      queryClient.invalidateQueries(['routing-rules']);
+    },
+    onError: () => toast.error('Failed to activate rule'),
+  });
+
   const breachesSummary = useMemo(() => {
     return {
       firstResponse: breachesData?.first_response_breaches || [],
@@ -115,8 +285,11 @@ export default function AdminSettings() {
             <div className="border-b border-gray-200 px-4 py-3">
               <TabList className="border-b-0">
                 <TabButton>Profile</TabButton>
+                <TabButton>Theme</TabButton>
                 <TabButton>SLA Policies</TabButton>
                 <TabButton>SLA Breaches</TabButton>
+                <TabButton>Proactive Rules</TabButton>
+                <TabButton>Routing Rules</TabButton>
                 <TabButton>Staff Users</TabButton>
               </TabList>
             </div>
@@ -200,6 +373,11 @@ export default function AdminSettings() {
                       </div>
                     </CardContent>
                   </Card>
+                </div>
+              </TabPanel>
+
+              <TabPanel>
+                <div className="p-4 space-y-4">
 
                   <div className="flex items-center justify-between">
                     <div>
@@ -246,14 +424,23 @@ export default function AdminSettings() {
                                 >
                                   Edit
                                 </Button>
-                                <Button
-                                  size="sm"
-                                  variant="danger"
-                                  disabled={!policy.is_active}
-                                  onClick={() => deactivateMutation.mutate(policy.id)}
-                                >
-                                  Deactivate
-                                </Button>
+                                {policy.is_active ? (
+                                  <Button
+                                    size="sm"
+                                    variant="danger"
+                                    onClick={() => deactivateMutation.mutate(policy.id)}
+                                  >
+                                    Deactivate
+                                  </Button>
+                                ) : (
+                                  <Button
+                                    size="sm"
+                                    variant="success"
+                                    onClick={() => activateMutation.mutate(policy.id)}
+                                  >
+                                    Activate
+                                  </Button>
+                                )}
                               </div>
                             </TableCell>
                           </TableRow>
@@ -330,6 +517,170 @@ export default function AdminSettings() {
 
               <TabPanel>
                 <div className="p-4 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Proactive Rules</h2>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">Automate messages based on triggers.</p>
+                    </div>
+                    <Button onClick={handleOpenProactiveCreate}>Add Rule</Button>
+                  </div>
+
+                  {proactiveLoading ? (
+                    <div className="py-8">
+                      <Spinner size="lg" />
+                    </div>
+                  ) : proactiveRules.length === 0 ? (
+                    <div className="text-sm text-gray-500 dark:text-gray-400">No proactive rules yet</div>
+                  ) : (
+                    <Table>
+                      <TableHead>
+                        <TableRow>
+                          <TableHeader>Trigger</TableHeader>
+                          <TableHeader>Template</TableHeader>
+                          <TableHeader>Status</TableHeader>
+                          <TableHeader>Actions</TableHeader>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {proactiveRules.map((rule) => (
+                          <TableRow key={rule.id}>
+                            <TableCell>{rule.trigger_type}</TableCell>
+                            <TableCell className="max-w-xs truncate">{rule.message_template}</TableCell>
+                            <TableCell>
+                              <Badge variant={rule.is_active ? 'success' : 'default'} size="sm">
+                                {rule.is_active ? 'Active' : 'Inactive'}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <Button
+                                  size="sm"
+                                  variant="secondary"
+                                  onClick={() => handleOpenProactiveEdit(rule)}
+                                >
+                                  Edit
+                                </Button>
+                                {rule.is_active ? (
+                                  <Button
+                                    size="sm"
+                                    variant="danger"
+                                    onClick={() => proactiveDeactivateMutation.mutate(rule.id)}
+                                  >
+                                    Deactivate
+                                  </Button>
+                                ) : (
+                                  <Button
+                                    size="sm"
+                                    variant="success"
+                                    onClick={() => proactiveActivateMutation.mutate(rule.id)}
+                                  >
+                                    Activate
+                                  </Button>
+                                )}
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => proactiveDeleteMutation.mutate(rule.id)}
+                                >
+                                  Delete
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  )}
+                </div>
+              </TabPanel>
+
+              <TabPanel>
+                <div className="p-4 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Routing Rules</h2>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">Route tickets by category and priority.</p>
+                    </div>
+                    <Button onClick={handleOpenRoutingCreate}>Add Rule</Button>
+                  </div>
+
+                  {routingLoading ? (
+                    <div className="py-8">
+                      <Spinner size="lg" />
+                    </div>
+                  ) : routingRules.length === 0 ? (
+                    <div className="text-sm text-gray-500 dark:text-gray-400">No routing rules yet</div>
+                  ) : (
+                    <Table>
+                      <TableHead>
+                        <TableRow>
+                          <TableHeader>Department</TableHeader>
+                          <TableHeader>Category</TableHeader>
+                          <TableHeader>Priority</TableHeader>
+                          <TableHeader>Status</TableHeader>
+                          <TableHeader>Actions</TableHeader>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {routingRules.map((rule) => (
+                          <TableRow key={rule.id}>
+                            <TableCell>{rule.department?.name || 'N/A'}</TableCell>
+                            <TableCell>{rule.match_category}</TableCell>
+                            <TableCell>{rule.priority_default}</TableCell>
+                            <TableCell>
+                              <Badge variant={rule.is_active ? 'success' : 'default'} size="sm">
+                                {rule.is_active ? 'Active' : 'Inactive'}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <Button
+                                  size="sm"
+                                  variant="secondary"
+                                  onClick={() => handleOpenRoutingEdit(rule)}
+                                >
+                                  Edit
+                                </Button>
+                                {rule.is_active ? (
+                                  <Button
+                                    size="sm"
+                                    variant="danger"
+                                    onClick={() => routingDeactivateMutation.mutate(rule.id)}
+                                  >
+                                    Deactivate
+                                  </Button>
+                                ) : (
+                                  <Button
+                                    size="sm"
+                                    variant="success"
+                                    onClick={() => routingActivateMutation.mutate(rule.id)}
+                                  >
+                                    Activate
+                                  </Button>
+                                )}
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  )}
+
+                  {routingPagination?.last_page > 1 && (
+                    <Pagination
+                      currentPage={routingPagination.current_page || 1}
+                      totalPages={routingPagination.last_page || 1}
+                      onPageChange={(nextPage) => {
+                        if (nextPage < 1 || nextPage > (routingPagination.last_page || 1)) return;
+                        setRoutingPage(nextPage);
+                      }}
+                    />
+                  )}
+                </div>
+              </TabPanel>
+
+              <TabPanel>
+                <div className="p-4 space-y-4">
                   <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Staff Users</h2>
                   <p className="text-sm text-gray-600 dark:text-gray-400">Manage staff accounts and access in the Staff module.</p>
                   <div>
@@ -386,6 +737,121 @@ export default function AdminSettings() {
             <Button
               onClick={() => policyMutation.mutate(policyForm)}
               disabled={!policyForm.department_id || !policyForm.first_response_minutes || !policyForm.resolution_minutes}
+            >
+              Save
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={showProactiveModal}
+        onClose={() => setShowProactiveModal(false)}
+        title={proactiveForm.id ? 'Edit Proactive Rule' : 'Create Proactive Rule'}
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="text-sm font-medium text-gray-700">Trigger Type</label>
+            <select
+              value={proactiveForm.trigger_type}
+              onChange={(e) => setProactiveForm((prev) => ({ ...prev, trigger_type: e.target.value }))}
+              className="mt-1 w-full rounded-md border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
+            >
+              <option value="ticket_created">ticket_created</option>
+              <option value="sla_breach">sla_breach</option>
+              <option value="status_changed">status_changed</option>
+              <option value="scheduled">scheduled</option>
+            </select>
+          </div>
+          <Input
+            label="Message Template"
+            value={proactiveForm.message_template}
+            onChange={(e) => setProactiveForm((prev) => ({ ...prev, message_template: e.target.value }))}
+          />
+          <div>
+            <label className="text-sm font-medium text-gray-700">Trigger Config (JSON)</label>
+            <textarea
+              value={proactiveForm.trigger_config}
+              onChange={(e) => setProactiveForm((prev) => ({ ...prev, trigger_config: e.target.value }))}
+              rows={4}
+              className="mt-1 w-full rounded-md border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
+            />
+          </div>
+          <div className="flex items-center gap-2 text-sm text-gray-700">
+            <input
+              id="proactive-active"
+              type="checkbox"
+              checked={proactiveForm.is_active}
+              onChange={(e) => setProactiveForm((prev) => ({ ...prev, is_active: e.target.checked }))}
+            />
+            <label htmlFor="proactive-active">Active</label>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="secondary" onClick={() => setShowProactiveModal(false)}>
+              Cancel
+            </Button>
+            <Button onClick={() => proactiveMutation.mutate(proactiveForm)}>
+              Save
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={showRoutingModal}
+        onClose={() => setShowRoutingModal(false)}
+        title={routingForm.id ? 'Edit Routing Rule' : 'Create Routing Rule'}
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="text-sm font-medium text-gray-700">Department</label>
+            <select
+              value={routingForm.department_id}
+              onChange={(e) => setRoutingForm((prev) => ({ ...prev, department_id: e.target.value }))}
+              className="mt-1 w-full rounded-md border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
+            >
+              <option value="">Select department</option>
+              {departments.map((department) => (
+                <option key={department.id} value={department.id}>
+                  {department.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <Input
+            label="Match Category"
+            value={routingForm.match_category}
+            onChange={(e) => setRoutingForm((prev) => ({ ...prev, match_category: e.target.value }))}
+          />
+          <div>
+            <label className="text-sm font-medium text-gray-700">Priority Default</label>
+            <select
+              value={routingForm.priority_default}
+              onChange={(e) => setRoutingForm((prev) => ({ ...prev, priority_default: e.target.value }))}
+              className="mt-1 w-full rounded-md border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
+            >
+              <option value="low">low</option>
+              <option value="med">med</option>
+              <option value="high">high</option>
+              <option value="urgent">urgent</option>
+            </select>
+          </div>
+          <div className="flex items-center gap-2 text-sm text-gray-700">
+            <input
+              id="routing-active"
+              type="checkbox"
+              checked={routingForm.is_active}
+              onChange={(e) => setRoutingForm((prev) => ({ ...prev, is_active: e.target.checked }))}
+            />
+            <label htmlFor="routing-active">Active</label>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="secondary" onClick={() => setShowRoutingModal(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => routingMutation.mutate(routingForm)}
+              disabled={!routingForm.department_id || !routingForm.match_category}
             >
               Save
             </Button>
