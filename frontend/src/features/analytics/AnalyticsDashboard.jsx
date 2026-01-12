@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useQuery, useQueries } from '@tanstack/react-query';
 import { analyticsAPI, departmentsAPI, ticketsAPI } from '@/api';
-import { Card, CardHeader, CardTitle, CardContent, Spinner } from '@/components/ui';
+import { Card, CardHeader, CardTitle, CardContent, Spinner, Input } from '@/components/ui';
 import MetricCard from './MetricCard';
 import TicketTrendChart from './TicketTrendChart';
 import CategoryPieChart from './CategoryPieChart';
@@ -300,12 +300,10 @@ export default function AnalyticsDashboard() {
             <option value="urgent">Urgent</option>
           </select>
 
-          <input
-            type="text"
+          <Input
             placeholder="Category"
             value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.target.value)}
-            className="rounded-md border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500"
           />
         </div>
       </div>

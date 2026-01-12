@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { roomsAPI } from '@/api';
-import { Button, Badge, Spinner, EmptyState, Pagination, Input } from '@/components/ui';
+import { Button, Badge, Spinner, EmptyState, Pagination, Input, ConfirmDialog } from '@/components/ui';
 import { PlusIcon, BuildingOfficeIcon, QrCodeIcon, PencilSquareIcon, TrashIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import CreateRoomModal from './CreateRoomModal';
 import QRTokenModal from './QRTokenModal';
@@ -21,6 +21,8 @@ export default function RoomList() {
   const [selectedRoom, setSelectedRoom] = useState(null);
   const [showQRModal, setShowQRModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [roomToDelete, setRoomToDelete] = useState(null);
   const [page, setPage] = useState(1);
   const perPage = 8;
   const [searchTerm, setSearchTerm] = useState('');
@@ -66,9 +68,8 @@ export default function RoomList() {
   };
 
   const handleDeleteClick = (room) => {
-    const confirmed = window.confirm(`Delete room ${room.room_number}? This cannot be undone.`);
-    if (!confirmed) return;
-    deleteMutation.mutate(room.id);
+    setRoomToDelete(room);
+    setShowDeleteConfirm(true);
   };
 
   if (isLoading) {
@@ -223,6 +224,32 @@ export default function RoomList() {
           }}
         />
       )}
+
+      <ConfirmDialog
+        isOpen={showDeleteConfirm}
+        title="Delete room"
+        message={
+          roomToDelete
+            ? `Delete room ${roomToDelete.room_number}? This cannot be undone.`
+            : 'Delete this room? This cannot be undone.'
+        }
+        confirmLabel="Delete"
+        confirmVariant="danger"
+        isLoading={deleteMutation.isLoading}
+        onCancel={() => {
+          setShowDeleteConfirm(false);
+          setRoomToDelete(null);
+        }}
+        onConfirm={() => {
+          if (!roomToDelete) return;
+          deleteMutation.mutate(roomToDelete.id, {
+            onSettled: () => {
+              setShowDeleteConfirm(false);
+              setRoomToDelete(null);
+            },
+          });
+        }}
+      />
     </div>
   );
 }
