@@ -50,7 +50,7 @@ class TicketController extends Controller
         $tickets = $query
             ->orderByDesc('updated_at')
             ->orderByDesc('created_at')
-            ->paginate((int) $request->input('per_page', 3));
+            ->paginate((int) $request->input('per_page', 5));
 
         $items = collect($tickets->items())->map(fn ($ticket) => [
             'id' => $ticket->id,

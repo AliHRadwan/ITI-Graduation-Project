@@ -70,6 +70,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/conversations/{conversation}/messages', [MessageController::class, 'store']);
 
     // 6) Attachments
+    Route::get('/attachments', [AttachmentController::class, 'index'])->middleware('manager.or.admin');
     Route::post('/attachments/upload', [AttachmentController::class, 'upload']);
     Route::get('/attachments/{attachment}', [AttachmentController::class, 'show']);
     Route::post('/messages/{message}/attachments', [AttachmentController::class, 'attachToMessage']);
