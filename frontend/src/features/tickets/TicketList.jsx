@@ -38,7 +38,7 @@ export default function TicketList() {
   });
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [page, setPage] = useState(1);
-  const perPage = 3;
+  const perPage = 5;
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
 

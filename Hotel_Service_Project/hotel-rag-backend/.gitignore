@@ -63,7 +63,9 @@ hotel_knowledge/**/*.xlsx
 *.tmp
 *.temp
 .cache/
-
+venv
+.venv
+app/__pycache__
 # Model cache
 .transformers/
 model_cache/

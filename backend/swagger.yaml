@@ -1,0 +1,4039 @@
+openapi: 3.0.3
+info:
+  title: Hotel Service API
+  description: |
+    API for the Hotel Service Management System - ITI Graduation Project.
+    
+    This API provides endpoints for:
+    - Staff authentication and management
+    - Guest and conversation management
+    - Ticket management with SLA tracking
+    - Room and department management
+    - QR code token generation for room access
+    - Proactive messaging rules
+    - Knowledge base document management
+    - Integration endpoints for n8n/external automation
+  version: 1.0.0
+  contact:
+    name: ITI Graduation Project Team
+
+servers:
+  - url: http://localhost:8000/api
+    description: Local Development Server
+  - url: https://api.example.com/api
+    description: Production Server
+
+tags:
+  - name: Documentation
+    description: API documentation endpoints
+  - name: Authentication
+    description: Staff authentication endpoints
+  - name: Staff Users
+    description: Staff user management (Admin/Manager)
+  - name: Staff Roles
+    description: Staff role management (Admin only)
+  - name: Staff Memberships
+    description: Staff department memberships (Manager/Admin)
+  - name: Guests
+    description: Guest identity management
+  - name: Conversations
+    description: Guest conversation management
+  - name: Messages
+    description: Conversation messages
+  - name: Attachments
+    description: File attachments for messages
+  - name: Rooms
+    description: Hotel room management
+  - name: Departments
+    description: Department management
+  - name: Channels
+    description: Channel configuration (Telegram, WhatsApp, etc.)
+  - name: Proactive Rules
+    description: Proactive messaging rules
+  - name: QR Tokens
+    description: QR code room tokens
+  - name: Tickets
+    description: Service ticket management
+  - name: SLA
+    description: SLA policy management
+  - name: Notifications
+    description: Notification logs
+  - name: Routing Rules
+    description: Ticket routing rules
+  - name: Dashboard
+    description: Dashboard metrics and reports
+  - name: Search
+    description: Global search
+  - name: Knowledge Base
+    description: Knowledge document management for RAG
+  - name: Integrations
+    description: External integration endpoints (n8n)
+  - name: Webhooks
+    description: Webhook endpoints for external callbacks
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: sanctum
+
+  schemas:
+    # Common Schemas
+    PaginationMeta:
+      type: object
+      properties:
+        current_page:
+          type: integer
+        per_page:
+          type: integer
+        total:
+          type: integer
+        last_page:
+          type: integer
+
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: object
+
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        message:
+          type: string
+        error:
+          type: string
+        details:
+          type: object
+
+    # User & Auth Schemas
+    StaffUser:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        is_active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        role:
+          $ref: '#/components/schemas/StaffRole'
+        department:
+          $ref: '#/components/schemas/DepartmentSimple'
+
+    StaffRole:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+          enum: [admin, manager, agent]
+
+    StaffMembership:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        staff_user_id:
+          type: string
+          format: uuid
+        department_id:
+          type: string
+          format: uuid
+        staff_role_id:
+          type: integer
+        staffUser:
+          $ref: '#/components/schemas/StaffUser'
+        department:
+          $ref: '#/components/schemas/Department'
+        role:
+          $ref: '#/components/schemas/StaffRole'
+
+    LoginResponse:
+      type: object
+      properties:
+        user:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+            name:
+              type: string
+            email:
+              type: string
+              format: email
+            memberships:
+              type: array
+              items:
+                type: object
+                properties:
+                  department:
+                    type: string
+                  role:
+                    type: string
+        token:
+          type: string
+
+    # Guest & Conversation Schemas
+    GuestIdentity:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        channel_type:
+          type: string
+          enum: [telegram, whatsapp, web]
+        channel_user_id:
+          type: string
+        preferred_language:
+          type: string
+        first_seen_at:
+          type: string
+          format: date-time
+
+    Conversation:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        guest_identity_id:
+          type: string
+          format: uuid
+        room_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [open, closed, handoff]
+        started_at:
+          type: string
+          format: date-time
+        last_seen_at:
+          type: string
+          format: date-time
+        metadata:
+          type: object
+        guestIdentity:
+          $ref: '#/components/schemas/GuestIdentity'
+        room:
+          $ref: '#/components/schemas/Room'
+
+    Message:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        conversation_id:
+          type: string
+          format: uuid
+        role:
+          type: string
+          enum: [guest, agent, staff, system]
+        content:
+          type: string
+        extracted_entities:
+          type: object
+        created_at:
+          type: string
+          format: date-time
+        attachments:
+          type: array
+          items:
+            $ref: '#/components/schemas/Attachment'
+
+    Attachment:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        message_id:
+          type: string
+          format: uuid
+        type:
+          type: string
+          enum: [image, audio, video, file]
+        storage_url:
+          type: string
+        mime_type:
+          type: string
+        size_bytes:
+          type: integer
+        transcript:
+          type: string
+
+    # Room & Department Schemas
+    Room:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        room_number:
+          type: string
+        status:
+          type: string
+          enum: [available, occupied, maintenance]
+        floor:
+          type: integer
+        room_type:
+          type: string
+
+    Department:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        is_active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    DepartmentSimple:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+
+    # Channel Config Schema
+    ChannelConfig:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        channel_type:
+          type: string
+          enum: [telegram, whatsapp, web]
+        config:
+          type: object
+        is_active:
+          type: boolean
+
+    # Proactive Rule Schema
+    ProactiveRule:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        trigger_type:
+          type: string
+        trigger_config:
+          type: object
+        message_template:
+          type: string
+        is_active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+
+    # QR Token Schema
+    QrRoomToken:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        room_id:
+          type: string
+          format: uuid
+        issued_at:
+          type: string
+          format: date-time
+        expires_at:
+          type: string
+          format: date-time
+        is_active:
+          type: boolean
+
+    # Ticket Schemas
+    Ticket:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        conversation_id:
+          type: string
+          format: uuid
+        room_id:
+          type: string
+          format: uuid
+        department_id:
+          type: string
+          format: uuid
+        actor_staff_user_id:
+          type: string
+          format: uuid
+        category:
+          type: string
+          enum: [housekeeping, food_and_drinks, maintenance, room_service, other]
+        status:
+          type: string
+          enum: [new, doing, done, canceled]
+        priority:
+          type: string
+          enum: [low, med, high, urgent]
+        description:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        room:
+          $ref: '#/components/schemas/Room'
+        department:
+          $ref: '#/components/schemas/DepartmentSimple'
+        staffUser:
+          $ref: '#/components/schemas/StaffUser'
+
+    TicketEvent:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        ticket_id:
+          type: string
+          format: uuid
+        actor_staff_user_id:
+          type: string
+          format: uuid
+        event_type:
+          type: string
+          enum: [created, assigned, status_changed, note, escalated, priority_changed]
+        note:
+          type: string
+        metadata:
+          type: object
+        created_at:
+          type: string
+          format: date-time
+        staffUser:
+          $ref: '#/components/schemas/StaffUser'
+
+    Rating:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        ticket_id:
+          type: string
+          format: uuid
+        stars:
+          type: integer
+          minimum: 1
+          maximum: 5
+        comment:
+          type: string
+
+    # SLA Schema
+    SlaPolicy:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        department_id:
+          type: string
+          format: uuid
+        first_response_minutes:
+          type: integer
+        resolution_minutes:
+          type: integer
+        quiet_hours:
+          type: array
+          items:
+            type: object
+        is_active:
+          type: boolean
+        department:
+          $ref: '#/components/schemas/Department'
+
+    # Notification Log Schema
+    NotificationLog:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        ticket_id:
+          type: string
+          format: uuid
+        conversation_id:
+          type: string
+          format: uuid
+        channel_type:
+          type: string
+          enum: [web, telegram, whatsapp]
+        message_type:
+          type: string
+          enum: [confirm, eta, delay, status, rating]
+        payload:
+          type: string
+        sent_at:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum: [sent, failed, pending]
+
+    # Routing Rule Schema
+    RoutingRule:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        department_id:
+          type: string
+          format: uuid
+        match_category:
+          type: string
+        priority_default:
+          type: string
+          enum: [low, med, high, urgent]
+        is_active:
+          type: boolean
+        department:
+          $ref: '#/components/schemas/Department'
+
+    # Knowledge Document Schema
+    KnowledgeDocument:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        uploaded_by:
+          type: string
+          format: uuid
+        title:
+          type: string
+        file_name:
+          type: string
+        file_path:
+          type: string
+        category:
+          type: string
+          enum: [policies, rooms_amenities, local_guide, services]
+        doc_collection:
+          type: string
+        mime_type:
+          type: string
+        file_size_bytes:
+          type: integer
+        status:
+          type: string
+          enum: [pending, processing, completed, failed]
+        chunks_count:
+          type: integer
+        uploaded_at:
+          type: string
+          format: date-time
+        processed_at:
+          type: string
+          format: date-time
+        error_message:
+          type: string
+        uploader:
+          $ref: '#/components/schemas/StaffUser'
+
+    # Dashboard Schemas
+    DashboardMetrics:
+      type: object
+      properties:
+        openTickets:
+          type: integer
+        overdue:
+          type: integer
+        avgRating:
+          type: number
+        activeConversations:
+          type: integer
+
+    SlaReport:
+      type: object
+      properties:
+        totalTickets:
+          type: integer
+        breaches:
+          type: integer
+        firstResponseBreaches:
+          type: integer
+        resolutionBreaches:
+          type: integer
+        avgResponseMinutes:
+          type: number
+        avgResolutionMinutes:
+          type: number
+        coverage:
+          type: object
+          properties:
+            response:
+              type: number
+            resolution:
+              type: number
+        availability:
+          type: object
+          properties:
+            avgResponse:
+              type: boolean
+            avgResolution:
+              type: boolean
+        quality:
+          type: object
+          properties:
+            response:
+              type: string
+            resolution:
+              type: string
+        notes:
+          type: array
+          items:
+            type: string
+
+paths:
+  # ==========================================
+  # DOCUMENTATION
+  # ==========================================
+  /docs:
+    get:
+      tags:
+        - Documentation
+      summary: Get API documentation
+      description: |
+        Serves the OpenAPI/Swagger YAML specification file.
+        
+        **Note:** This endpoint is only available in the local development environment.
+      responses:
+        '200':
+          description: Swagger YAML file
+          content:
+            text/yaml:
+              schema:
+                type: string
+                description: OpenAPI 3.0 specification in YAML format
+        '404':
+          description: Swagger file not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: File not found
+
+  # ==========================================
+  # AUTHENTICATION
+  # ==========================================
+  /auth/login:
+    post:
+      tags:
+        - Authentication
+      summary: Login staff user
+      description: Authenticate staff user and receive access token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  format: password
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          description: Invalid credentials
+
+  /auth/logout:
+    post:
+      tags:
+        - Authentication
+      summary: Logout staff user
+      description: Revoke all tokens for the authenticated user
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Logged out successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Logged out successfully.
+
+  /auth/me:
+    get:
+      tags:
+        - Authentication
+      summary: Get current user
+      description: Get the currently authenticated staff user's profile
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: User profile retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                      name:
+                        type: string
+                      email:
+                        type: string
+                        format: email
+                      memberships:
+                        type: array
+                        items:
+                          type: object
+
+  /auth/forgot-password:
+    post:
+      tags:
+        - Authentication
+      summary: Request password reset
+      description: Send password reset link to email
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+              properties:
+                email:
+                  type: string
+                  format: email
+      responses:
+        '200':
+          description: Reset link sent (if email exists)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+
+  /auth/reset-password:
+    post:
+      tags:
+        - Authentication
+      summary: Reset password
+      description: Reset password using token from email
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - token
+                - password
+                - password_confirmation
+              properties:
+                email:
+                  type: string
+                  format: email
+                token:
+                  type: string
+                password:
+                  type: string
+                  format: password
+                  minLength: 8
+                password_confirmation:
+                  type: string
+                  format: password
+      responses:
+        '200':
+          description: Password reset successful
+        '400':
+          description: Invalid or expired token
+
+  /auth/invite:
+    post:
+      tags:
+        - Authentication
+      summary: Invite staff user
+      description: Send invitation to new staff member (Admin only)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - email
+              properties:
+                name:
+                  type: string
+                email:
+                  type: string
+                  format: email
+      responses:
+        '201':
+          description: Invitation created
+        '403':
+          description: Forbidden - Admin only
+
+  /auth/invite/accept:
+    post:
+      tags:
+        - Authentication
+      summary: Accept invitation
+      description: Accept staff invitation and set password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - token
+                - password
+                - password_confirmation
+              properties:
+                email:
+                  type: string
+                  format: email
+                token:
+                  type: string
+                password:
+                  type: string
+                  format: password
+                  minLength: 8
+                password_confirmation:
+                  type: string
+                  format: password
+      responses:
+        '200':
+          description: Invitation accepted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  token:
+                    type: string
+        '400':
+          description: Invalid or expired invitation
+
+  # ==========================================
+  # STAFF USERS
+  # ==========================================
+  /staff/users:
+    get:
+      tags:
+        - Staff Users
+      summary: List staff users
+      description: Get paginated list of staff users (Manager/Admin)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: q
+          in: query
+          description: Search by name or email
+          schema:
+            type: string
+        - name: active
+          in: query
+          description: Filter by active status
+          schema:
+            type: boolean
+        - name: with_trashed
+          in: query
+          description: Include soft deleted users
+          schema:
+            type: boolean
+        - name: only_trashed
+          in: query
+          description: Only soft deleted users
+          schema:
+            type: boolean
+        - name: per_page
+          in: query
+          description: Items per page
+          schema:
+            type: integer
+            default: 5
+      responses:
+        '200':
+          description: List of staff users
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/StaffUser'
+                  pagination:
+                    $ref: '#/components/schemas/PaginationMeta'
+
+    post:
+      tags:
+        - Staff Users
+      summary: Create staff user
+      description: Create a new staff user (Admin only)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - email
+                - password
+              properties:
+                name:
+                  type: string
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  format: password
+                is_active:
+                  type: boolean
+                  default: true
+      responses:
+        '201':
+          description: Staff user created
+        '403':
+          description: Forbidden - Admin only
+
+  /staff/users/{id}:
+    get:
+      tags:
+        - Staff Users
+      summary: Get staff user
+      description: Get staff user by ID (Manager/Admin)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Staff user details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StaffUser'
+        '404':
+          description: User not found
+
+    patch:
+      tags:
+        - Staff Users
+      summary: Update staff user
+      description: Update staff user (Manager/Admin)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  format: password
+                staff_role_id:
+                  type: integer
+                department_id:
+                  type: string
+                  format: uuid
+      responses:
+        '200':
+          description: Staff user updated
+        '404':
+          description: User not found
+
+    delete:
+      tags:
+        - Staff Users
+      summary: Soft delete staff user
+      description: Soft delete a staff user (Admin only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: User deleted successfully
+        '403':
+          description: Forbidden - Admin only
+
+  /staff/users/{id}/deactivate:
+    post:
+      tags:
+        - Staff Users
+      summary: Deactivate staff user
+      description: Deactivate a staff user (Admin only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: User deactivated
+
+  /staff/users/{id}/activate:
+    post:
+      tags:
+        - Staff Users
+      summary: Activate staff user
+      description: Activate a staff user (Admin only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: User activated
+
+  /staff/users/{id}/restore:
+    post:
+      tags:
+        - Staff Users
+      summary: Restore soft deleted user
+      description: Restore a soft deleted staff user (Admin only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: User restored
+
+  /staff/users/{id}/force:
+    delete:
+      tags:
+        - Staff Users
+      summary: Permanently delete user
+      description: Permanently delete a soft deleted staff user (Admin only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: User permanently deleted
+
+  # ==========================================
+  # STAFF ROLES
+  # ==========================================
+  /staff/roles:
+    get:
+      tags:
+        - Staff Roles
+      summary: List staff roles
+      description: Get all staff roles (Admin only)
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of roles
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/StaffRole'
+
+    post:
+      tags:
+        - Staff Roles
+      summary: Create staff role
+      description: Create a new staff role (Admin only)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+              properties:
+                name:
+                  type: string
+      responses:
+        '201':
+          description: Role created
+
+  /staff/roles/{id}:
+    patch:
+      tags:
+        - Staff Roles
+      summary: Update staff role
+      description: Update a staff role (Admin only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+              properties:
+                name:
+                  type: string
+      responses:
+        '200':
+          description: Role updated
+
+    delete:
+      tags:
+        - Staff Roles
+      summary: Delete staff role
+      description: Delete a staff role (Admin only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Role deleted
+        '422':
+          description: Role is in use
+
+  # ==========================================
+  # STAFF MEMBERSHIPS
+  # ==========================================
+  /staff/memberships:
+    get:
+      tags:
+        - Staff Memberships
+      summary: List staff memberships
+      description: Get all staff memberships (Manager/Admin)
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of memberships
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/StaffMembership'
+
+    post:
+      tags:
+        - Staff Memberships
+      summary: Create staff membership
+      description: Create a new staff membership (Manager/Admin)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - department_id
+                - staff_user_id
+                - staff_role_id
+              properties:
+                department_id:
+                  type: string
+                  format: uuid
+                staff_user_id:
+                  type: string
+                  format: uuid
+                staff_role_id:
+                  type: integer
+      responses:
+        '201':
+          description: Membership created
+
+  /staff/memberships/{id}:
+    patch:
+      tags:
+        - Staff Memberships
+      summary: Update staff membership
+      description: Update a staff membership (Manager/Admin)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - department_id
+              properties:
+                department_id:
+                  type: string
+                  format: uuid
+                staff_role_id:
+                  type: integer
+      responses:
+        '200':
+          description: Membership updated
+
+    delete:
+      tags:
+        - Staff Memberships
+      summary: Delete staff membership
+      description: Delete a staff membership (Manager/Admin)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Membership removed
+
+  # ==========================================
+  # GUESTS
+  # ==========================================
+  /guests:
+    get:
+      tags:
+        - Guests
+      summary: List guests
+      description: Get paginated list of guest identities
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: q
+          in: query
+          description: Search by channel user ID
+          schema:
+            type: string
+        - name: channel_type
+          in: query
+          description: Filter by channel type
+          schema:
+            type: string
+            enum: [telegram, whatsapp, web]
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: List of guests
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/GuestIdentity'
+                  pagination:
+                    $ref: '#/components/schemas/PaginationMeta'
+
+  /guests/{guestIdentity}:
+    get:
+      tags:
+        - Guests
+      summary: Get guest details
+      description: Get guest identity with recent conversations
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: guestIdentity
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Guest details
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/GuestIdentity'
+                  - type: object
+                    properties:
+                      conversations:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Conversation'
+
+  # ==========================================
+  # CONVERSATIONS
+  # ==========================================
+  /conversations:
+    get:
+      tags:
+        - Conversations
+      summary: List conversations
+      description: Get paginated list of conversations
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: q
+          in: query
+          description: Search query
+          schema:
+            type: string
+        - name: status
+          in: query
+          description: Filter by status (can be array)
+          schema:
+            oneOf:
+              - type: string
+                enum: [open, closed, handoff]
+              - type: array
+                items:
+                  type: string
+                  enum: [open, closed, handoff]
+        - name: room_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: guest_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            default: 3
+      responses:
+        '200':
+          description: List of conversations
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Conversation'
+                  pagination:
+                    $ref: '#/components/schemas/PaginationMeta'
+
+  /conversations/{conversation}:
+    get:
+      tags:
+        - Conversations
+      summary: Get conversation details
+      description: Get conversation with guest and room details
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: conversation
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Conversation details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Conversation'
+
+  /conversations/{conversation}/status:
+    patch:
+      tags:
+        - Conversations
+      summary: Update conversation status
+      description: Update conversation status
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: conversation
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - status
+              properties:
+                status:
+                  type: string
+                  enum: [open, closed, handoff, OPEN, CLOSED, HANDOFF]
+      responses:
+        '200':
+          description: Status updated
+
+  /conversations/{conversation}/handoff:
+    post:
+      tags:
+        - Conversations
+      summary: Handoff conversation
+      description: Mark conversation for human handoff
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: conversation
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Conversation handed off
+
+  /conversations/{conversation}/close:
+    post:
+      tags:
+        - Conversations
+      summary: Close conversation
+      description: Close the conversation
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: conversation
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Conversation closed
+
+  # ==========================================
+  # MESSAGES
+  # ==========================================
+  /conversations/{conversation}/messages:
+    get:
+      tags:
+        - Messages
+      summary: List messages
+      description: Get paginated messages for a conversation
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: conversation
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            default: 50
+      responses:
+        '200':
+          description: List of messages
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Message'
+                  pagination:
+                    $ref: '#/components/schemas/PaginationMeta'
+
+    post:
+      tags:
+        - Messages
+      summary: Send message
+      description: Send a message in a conversation
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: conversation
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - content
+              properties:
+                role:
+                  type: string
+                  enum: [guest, agent, staff, system]
+                  default: staff
+                content:
+                  type: string
+                extracted_entities:
+                  type: object
+      responses:
+        '201':
+          description: Message sent
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+
+  # ==========================================
+  # ATTACHMENTS
+  # ==========================================
+  /attachments/upload:
+    post:
+      tags:
+        - Attachments
+      summary: Upload attachment
+      description: Upload a file attachment
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - file
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '201':
+          description: File uploaded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                    enum: [image, audio, video, file]
+                  storage_url:
+                    type: string
+                  mime_type:
+                    type: string
+                  size_bytes:
+                    type: integer
+                  path:
+                    type: string
+                  disk:
+                    type: string
+
+  /attachments/{attachment}:
+    get:
+      tags:
+        - Attachments
+      summary: Get attachment
+      description: Get attachment details
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: attachment
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Attachment details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Attachment'
+
+  /messages/{message}/attachments:
+    post:
+      tags:
+        - Attachments
+      summary: Attach to message
+      description: Attach a file to a message
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: message
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - type
+                - storage_url
+              properties:
+                type:
+                  type: string
+                  enum: [image, audio, video, file]
+                storage_url:
+                  type: string
+                mime_type:
+                  type: string
+                size_bytes:
+                  type: integer
+                transcript:
+                  type: string
+      responses:
+        '201':
+          description: Attachment linked to message
+
+  # ==========================================
+  # ROOMS
+  # ==========================================
+  /rooms:
+    get:
+      tags:
+        - Rooms
+      summary: List rooms
+      description: Get paginated list of rooms
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          description: Filter by status
+          schema:
+            type: string
+            enum: [available, occupied, maintenance]
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            default: 8
+      responses:
+        '200':
+          description: List of rooms
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Room'
+
+    post:
+      tags:
+        - Rooms
+      summary: Create room
+      description: Create a new room (Manager/Admin)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - room_number
+              properties:
+                room_number:
+                  type: string
+                status:
+                  type: string
+                  enum: [available, occupied, maintenance]
+                  default: available
+      responses:
+        '201':
+          description: Room created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/Room'
+
+  /rooms/{id}:
+    get:
+      tags:
+        - Rooms
+      summary: Get room
+      description: Get room details
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Room details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Room'
+
+    patch:
+      tags:
+        - Rooms
+      summary: Update room
+      description: Update room (Manager/Admin)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                room_number:
+                  type: string
+                status:
+                  type: string
+                  enum: [available, occupied, maintenance]
+      responses:
+        '200':
+          description: Room updated
+
+    delete:
+      tags:
+        - Rooms
+      summary: Delete room
+      description: Delete room (Manager/Admin)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Room deleted
+
+  # ==========================================
+  # DEPARTMENTS
+  # ==========================================
+  /departments:
+    get:
+      tags:
+        - Departments
+      summary: List departments
+      description: Get paginated list of departments (Manager/Admin)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: q
+          in: query
+          description: Search by name
+          schema:
+            type: string
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            default: 5
+      responses:
+        '200':
+          description: List of departments
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Department'
+
+    post:
+      tags:
+        - Departments
+      summary: Create department
+      description: Create a new department (Manager/Admin)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+              properties:
+                name:
+                  type: string
+                is_active:
+                  type: boolean
+                  default: true
+      responses:
+        '201':
+          description: Department created
+
+  /departments/{id}:
+    get:
+      tags:
+        - Departments
+      summary: Get department
+      description: Get department details (Manager/Admin)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Department details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Department'
+
+    patch:
+      tags:
+        - Departments
+      summary: Update department
+      description: Update department (Manager/Admin)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                is_active:
+                  type: boolean
+      responses:
+        '200':
+          description: Department updated
+
+    delete:
+      tags:
+        - Departments
+      summary: Delete department
+      description: Delete department (Manager/Admin)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Department deleted
+
+  /departments/{id}/deactivate:
+    post:
+      tags:
+        - Departments
+      summary: Deactivate department
+      description: Deactivate a department (Manager/Admin)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Department deactivated
+
+  # ==========================================
+  # CHANNELS
+  # ==========================================
+  /channels:
+    get:
+      tags:
+        - Channels
+      summary: List channel configs
+      description: Get all channel configurations
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of channels
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ChannelConfig'
+
+    post:
+      tags:
+        - Channels
+      summary: Create channel config
+      description: Create a new channel configuration (Manager/Admin)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - channel_type
+              properties:
+                channel_type:
+                  type: string
+                  enum: [telegram, whatsapp, web]
+                config:
+                  type: object
+                is_active:
+                  type: boolean
+                  default: true
+      responses:
+        '201':
+          description: Channel created
+
+  /channels/{id}:
+    get:
+      tags:
+        - Channels
+      summary: Get channel config
+      description: Get channel configuration details
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Channel details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChannelConfig'
+
+    patch:
+      tags:
+        - Channels
+      summary: Update channel config
+      description: Update channel configuration (Manager/Admin)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                channel_type:
+                  type: string
+                  enum: [telegram, whatsapp, web]
+                config:
+                  type: object
+                is_active:
+                  type: boolean
+      responses:
+        '200':
+          description: Channel updated
+
+    delete:
+      tags:
+        - Channels
+      summary: Delete channel config
+      description: Delete channel configuration (Manager/Admin)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Channel deleted
+
+  # ==========================================
+  # PROACTIVE RULES
+  # ==========================================
+  /proactive-rules:
+    get:
+      tags:
+        - Proactive Rules
+      summary: List proactive rules
+      description: Get all proactive messaging rules
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of rules
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ProactiveRule'
+
+    post:
+      tags:
+        - Proactive Rules
+      summary: Create proactive rule
+      description: Create a new proactive messaging rule
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - trigger_type
+                - message_template
+              properties:
+                trigger_type:
+                  type: string
+                trigger_config:
+                  type: object
+                message_template:
+                  type: string
+                is_active:
+                  type: boolean
+                  default: true
+      responses:
+        '201':
+          description: Rule created
+
+  /proactive-rules/preview:
+    post:
+      tags:
+        - Proactive Rules
+      summary: Preview template
+      description: Preview a message template with sample variables
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - message_template
+              properties:
+                message_template:
+                  type: string
+                variables:
+                  type: object
+      responses:
+        '200':
+          description: Template preview
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      original_template:
+                        type: string
+                      rendered_message:
+                        type: string
+                      variables_used:
+                        type: object
+                      validation:
+                        type: object
+
+  /proactive-rules/{id}:
+    get:
+      tags:
+        - Proactive Rules
+      summary: Get proactive rule
+      description: Get proactive rule details
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Rule details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProactiveRule'
+
+    patch:
+      tags:
+        - Proactive Rules
+      summary: Update proactive rule
+      description: Update a proactive messaging rule
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                trigger_type:
+                  type: string
+                trigger_config:
+                  type: object
+                message_template:
+                  type: string
+                is_active:
+                  type: boolean
+      responses:
+        '200':
+          description: Rule updated
+
+    delete:
+      tags:
+        - Proactive Rules
+      summary: Delete proactive rule
+      description: Delete a proactive messaging rule
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Rule deleted
+
+  /proactive-rules/{id}/deactivate:
+    post:
+      tags:
+        - Proactive Rules
+      summary: Deactivate proactive rule
+      description: Deactivate a proactive messaging rule
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Rule deactivated
+
+  # ==========================================
+  # QR TOKENS
+  # ==========================================
+  /qr/rooms/{roomId}/tokens:
+    post:
+      tags:
+        - QR Tokens
+      summary: Issue QR token
+      description: Issue a QR deep-link token for a room (Manager/Admin)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: roomId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                expires_at:
+                  type: string
+                  format: date-time
+      responses:
+        '201':
+          description: Token issued
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                      token:
+                        type: string
+                      room_id:
+                        type: string
+                        format: uuid
+                      room_number:
+                        type: string
+                      issued_at:
+                        type: string
+                        format: date-time
+                      expires_at:
+                        type: string
+                        format: date-time
+                      deep_link:
+                        type: string
+
+    get:
+      tags:
+        - QR Tokens
+      summary: List room tokens
+      description: List all tokens for a room (Manager/Admin)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: roomId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: List of tokens
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/QrRoomToken'
+
+  /qr/tokens/{id}/revoke:
+    post:
+      tags:
+        - QR Tokens
+      summary: Revoke token
+      description: Revoke a QR token (Manager/Admin)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Token revoked
+
+  /qr/resolve/{token}:
+    get:
+      tags:
+        - QR Tokens
+      summary: Resolve QR token
+      description: Resolve QR token to room information (Public)
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Token resolved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      room_id:
+                        type: string
+                        format: uuid
+                      room_number:
+                        type: string
+                      room_status:
+                        type: string
+        '404':
+          description: Invalid or inactive token
+        '410':
+          description: Token expired
+
+  # ==========================================
+  # TICKETS
+  # ==========================================
+  /tickets:
+    get:
+      tags:
+        - Tickets
+      summary: List tickets
+      description: Get paginated list of tickets
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: q
+          in: query
+          description: Search query
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [new, doing, done, canceled]
+        - name: priority
+          in: query
+          schema:
+            type: string
+            enum: [low, med, high, urgent]
+        - name: department_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: room_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: category
+          in: query
+          schema:
+            type: string
+        - name: start_date
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: end_date
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            default: 3
+      responses:
+        '200':
+          description: List of tickets
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Ticket'
+                  pagination:
+                    $ref: '#/components/schemas/PaginationMeta'
+
+    post:
+      tags:
+        - Tickets
+      summary: Create ticket
+      description: Create a new ticket (Manager/Admin)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - room_id
+                - department_id
+                - category
+                - status
+                - priority
+                - description
+              properties:
+                room_id:
+                  type: string
+                  format: uuid
+                department_id:
+                  type: string
+                  format: uuid
+                conversation_id:
+                  type: string
+                  format: uuid
+                actor_staff_user_id:
+                  type: string
+                  format: uuid
+                category:
+                  type: string
+                status:
+                  type: string
+                  enum: [new, doing, done, canceled]
+                priority:
+                  type: string
+                  enum: [low, med, high, urgent]
+                description:
+                  type: string
+                  maxLength: 500
+      responses:
+        '201':
+          description: Ticket created
+
+  /tickets/{ticket}:
+    get:
+      tags:
+        - Tickets
+      summary: Get ticket
+      description: Get ticket details
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: ticket
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Ticket details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ticket:
+                    $ref: '#/components/schemas/Ticket'
+
+    patch:
+      tags:
+        - Tickets
+      summary: Update ticket
+      description: Update ticket (Manager/Admin)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: ticket
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                room_id:
+                  type: string
+                  format: uuid
+                department_id:
+                  type: string
+                  format: uuid
+                conversation_id:
+                  type: string
+                  format: uuid
+                actor_staff_user_id:
+                  type: string
+                  format: uuid
+                category:
+                  type: string
+                status:
+                  type: string
+                  enum: [new, doing, done, canceled]
+                priority:
+                  type: string
+                  enum: [low, med, high, urgent]
+                description:
+                  type: string
+                  maxLength: 500
+      responses:
+        '200':
+          description: Ticket updated
+
+  /tickets/{ticket}/status:
+    post:
+      tags:
+        - Tickets
+      summary: Update ticket status
+      description: Update only the ticket status
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: ticket
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - status
+              properties:
+                status:
+                  type: string
+                  enum: [new, doing, done, canceled]
+                note:
+                  type: string
+                  maxLength: 500
+      responses:
+        '200':
+          description: Status updated
+
+  /tickets/{ticket}/assign:
+    post:
+      tags:
+        - Tickets
+      summary: Assign staff to ticket
+      description: Assign a staff member to ticket (Manager/Admin)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: ticket
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - actor_staff_user_id
+              properties:
+                actor_staff_user_id:
+                  type: string
+                  format: uuid
+                note:
+                  type: string
+                  maxLength: 500
+      responses:
+        '200':
+          description: Staff assigned
+
+  /tickets/{ticket}/notes:
+    post:
+      tags:
+        - Tickets
+      summary: Add note to ticket
+      description: Add a note to a ticket
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: ticket
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - note
+              properties:
+                note:
+                  type: string
+                  maxLength: 500
+      responses:
+        '200':
+          description: Note added
+        '403':
+          description: Permission denied
+
+  /tickets/{ticket}/escalate:
+    post:
+      tags:
+        - Tickets
+      summary: Escalate ticket
+      description: Escalate ticket to urgent priority (Manager/Admin)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: ticket
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                note:
+                  type: string
+                  maxLength: 500
+      responses:
+        '200':
+          description: Ticket escalated
+
+  /tickets/{ticket}/events:
+    get:
+      tags:
+        - Tickets
+      summary: Get ticket events
+      description: Get ticket event history
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: ticket
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Ticket events
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  events:
+                    type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/TicketEvent'
+
+  /tickets/{ticket}/rating:
+    post:
+      tags:
+        - Tickets
+      summary: Rate ticket
+      description: Submit a rating for a ticket
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: ticket
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - stars
+              properties:
+                stars:
+                  type: integer
+                  minimum: 1
+                  maximum: 5
+                comment:
+                  type: string
+                  maxLength: 500
+      responses:
+        '200':
+          description: Rating submitted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/Rating'
+
+    get:
+      tags:
+        - Tickets
+      summary: Get ticket rating
+      description: Get rating for a ticket
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: ticket
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Ticket rating
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  rating:
+                    $ref: '#/components/schemas/Rating'
+
+  # ==========================================
+  # SLA POLICIES
+  # ==========================================
+  /sla/policies:
+    get:
+      tags:
+        - SLA
+      summary: List SLA policies
+      description: Get paginated list of SLA policies
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of policies
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/SlaPolicy'
+
+    post:
+      tags:
+        - SLA
+      summary: Create SLA policy
+      description: Create a new SLA policy (Manager/Admin)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - department_id
+                - first_response_minutes
+                - resolution_minutes
+              properties:
+                department_id:
+                  type: string
+                  format: uuid
+                first_response_minutes:
+                  type: integer
+                  minimum: 1
+                  maximum: 120
+                resolution_minutes:
+                  type: integer
+                  minimum: 1
+                  maximum: 4320
+                quiet_hours:
+                  type: array
+                  items:
+                    type: object
+                is_active:
+                  type: boolean
+                  default: true
+      responses:
+        '201':
+          description: Policy created
+
+  /sla/policies/{policy}:
+    patch:
+      tags:
+        - SLA
+      summary: Update SLA policy
+      description: Update an SLA policy (Manager/Admin)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: policy
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                department_id:
+                  type: string
+                  format: uuid
+                first_response_minutes:
+                  type: integer
+                  minimum: 1
+                  maximum: 120
+                resolution_minutes:
+                  type: integer
+                  minimum: 1
+                  maximum: 4320
+                quiet_hours:
+                  type: array
+                  items:
+                    type: object
+                is_active:
+                  type: boolean
+      responses:
+        '200':
+          description: Policy updated
+
+  /sla/policies/{policy}/deactivate:
+    post:
+      tags:
+        - SLA
+      summary: Deactivate SLA policy
+      description: Deactivate an SLA policy (Manager/Admin)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: policy
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Policy deactivated
+
+  /sla/breaches:
+    get:
+      tags:
+        - SLA
+      summary: Get SLA breaches
+      description: Get tickets that have breached SLA
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: SLA breaches
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  first_response_breaches:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Ticket'
+                  resolution_breaches:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Ticket'
+
+  # ==========================================
+  # NOTIFICATIONS
+  # ==========================================
+  /notifications/logs:
+    get:
+      tags:
+        - Notifications
+      summary: List notification logs
+      description: Get paginated notification logs
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: conversation_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: ticket_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [sent, failed, pending]
+      responses:
+        '200':
+          description: List of notification logs
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/NotificationLog'
+
+    post:
+      tags:
+        - Notifications
+      summary: Create notification log
+      description: Create a notification log (Manager/Admin)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - conversation_id
+                - channel_type
+                - message_type
+                - payload
+                - status
+              properties:
+                ticket_id:
+                  type: string
+                  format: uuid
+                conversation_id:
+                  type: string
+                  format: uuid
+                channel_type:
+                  type: string
+                  enum: [web, telegram, whatsapp]
+                message_type:
+                  type: string
+                  enum: [confirm, eta, delay, status, rating]
+                payload:
+                  type: string
+                  maxLength: 64000
+                sent_at:
+                  type: string
+                  format: date-time
+                status:
+                  type: string
+                  enum: [sent, failed, pending]
+      responses:
+        '201':
+          description: Log created
+
+  /notifications/logs/{notificationLog}/mark-failed:
+    post:
+      tags:
+        - Notifications
+      summary: Mark notification as failed
+      description: Mark a notification log as failed (Manager/Admin)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: notificationLog
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Marked as failed
+
+  /notifications/logs/{notificationLog}/mark-sent:
+    post:
+      tags:
+        - Notifications
+      summary: Mark notification as sent
+      description: Mark a notification log as sent (Manager/Admin)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: notificationLog
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Marked as sent
+
+  # ==========================================
+  # ROUTING RULES
+  # ==========================================
+  /routing-rules:
+    get:
+      tags:
+        - Routing Rules
+      summary: List routing rules
+      description: Get paginated routing rules
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of routing rules
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/RoutingRule'
+
+    post:
+      tags:
+        - Routing Rules
+      summary: Create routing rule
+      description: Create a new routing rule (Manager/Admin)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - department_id
+                - match_category
+                - priority_default
+                - is_active
+              properties:
+                department_id:
+                  type: string
+                  format: uuid
+                match_category:
+                  type: string
+                  maxLength: 255
+                priority_default:
+                  type: string
+                  enum: [low, med, high, urgent]
+                is_active:
+                  type: boolean
+      responses:
+        '201':
+          description: Rule created
+
+  /routing-rules/{routingRule}:
+    patch:
+      tags:
+        - Routing Rules
+      summary: Update routing rule
+      description: Update a routing rule (Manager/Admin)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: routingRule
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                department_id:
+                  type: string
+                  format: uuid
+                match_category:
+                  type: string
+                  maxLength: 255
+                priority_default:
+                  type: string
+                  enum: [low, med, high, urgent]
+                is_active:
+                  type: boolean
+      responses:
+        '200':
+          description: Rule updated
+
+  /routing-rules/{routingRule}/deactivate:
+    post:
+      tags:
+        - Routing Rules
+      summary: Deactivate routing rule
+      description: Deactivate a routing rule (Manager/Admin)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: routingRule
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Rule deactivated
+
+  # ==========================================
+  # DASHBOARD
+  # ==========================================
+  /dashboard/metrics:
+    get:
+      tags:
+        - Dashboard
+      summary: Get dashboard metrics
+      description: Get top-level dashboard metrics
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Dashboard metrics
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/DashboardMetrics'
+
+  /dashboard/reports/tickets:
+    get:
+      tags:
+        - Dashboard
+      summary: Get ticket reports
+      description: Get ticket reports with filters
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: startDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: endDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: department
+          in: query
+          schema:
+            type: string
+        - name: department_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: status
+          in: query
+          schema:
+            type: string
+        - name: priority
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Ticket reports
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    type: object
+                    properties:
+                      tickets:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Ticket'
+                      filters:
+                        type: object
+
+  /dashboard/reports/sla:
+    get:
+      tags:
+        - Dashboard
+      summary: Get SLA reports
+      description: Get SLA performance reports
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: startDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: endDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: department_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: mode
+          in: query
+          description: Report mode (strict or demo)
+          schema:
+            type: string
+            enum: [strict, demo]
+            default: strict
+        - name: demo_cap_minutes
+          in: query
+          description: Demo mode cap (30-10080 minutes)
+          schema:
+            type: integer
+            minimum: 30
+            maximum: 10080
+            default: 1440
+      responses:
+        '200':
+          description: SLA reports
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/SlaReport'
+
+  # ==========================================
+  # SEARCH
+  # ==========================================
+  /search:
+    get:
+      tags:
+        - Search
+      summary: Global search
+      description: Search across tickets, conversations, and rooms
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: q
+          in: query
+          required: true
+          description: Search query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Search results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    type: object
+                    properties:
+                      results:
+                        type: object
+                        properties:
+                          tickets:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/Ticket'
+                          conversations:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/Conversation'
+                          rooms:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/Room'
+                      query:
+                        type: string
+        '400':
+          description: Missing query parameter
+
+  # ==========================================
+  # KNOWLEDGE BASE
+  # ==========================================
+  /knowledge-documents:
+    get:
+      tags:
+        - Knowledge Base
+      summary: List knowledge documents
+      description: Get paginated list of knowledge documents
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, processing, completed, failed]
+        - name: category
+          in: query
+          schema:
+            type: string
+            enum: [policies, rooms_amenities, local_guide, services]
+        - name: search
+          in: query
+          description: Search by title or filename
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of documents
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/KnowledgeDocument'
+
+    post:
+      tags:
+        - Knowledge Base
+      summary: Upload knowledge document
+      description: Upload a new knowledge document for RAG processing
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - title
+                - category
+                - file
+              properties:
+                title:
+                  type: string
+                  maxLength: 255
+                category:
+                  type: string
+                  enum: [policies, rooms_amenities, local_guide, services]
+                file:
+                  type: string
+                  format: binary
+                  description: PDF or DOCX file (max 10MB)
+      responses:
+        '201':
+          description: Document uploaded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  document:
+                    $ref: '#/components/schemas/KnowledgeDocument'
+
+  /knowledge-documents/{id}:
+    get:
+      tags:
+        - Knowledge Base
+      summary: Get knowledge document
+      description: Get knowledge document details
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Document details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KnowledgeDocument'
+
+    delete:
+      tags:
+        - Knowledge Base
+      summary: Delete knowledge document
+      description: Delete a knowledge document
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Document deleted
+
+  /knowledge-documents/{id}/reprocess:
+    post:
+      tags:
+        - Knowledge Base
+      summary: Reprocess document
+      description: Reprocess a failed knowledge document
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Document reprocessed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  document:
+                    $ref: '#/components/schemas/KnowledgeDocument'
+        '400':
+          description: Document already processed
+
+  /knowledge-documents/test/connection:
+    get:
+      tags:
+        - Knowledge Base
+      summary: Test RAG connection
+      description: Test connection to RAG API
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Connection status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  connected:
+                    type: boolean
+                  status:
+                    type: object
+
+  # ==========================================
+  # INTEGRATIONS (n8n)
+  # ==========================================
+  /integrations/conversations/upsert:
+    post:
+      tags:
+        - Integrations
+      summary: Upsert conversation
+      description: Create or update guest and conversation (for n8n)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - channel_type
+                - channel_user_id
+                - chat_id
+              properties:
+                channel_type:
+                  type: string
+                channel_user_id:
+                  type: string
+                chat_id:
+                  type: string
+                room_id:
+                  type: string
+                  format: uuid
+                preferred_language:
+                  type: string
+                  maxLength: 10
+                user_metadata:
+                  type: object
+      responses:
+        '200':
+          description: Conversation upserted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  guest_identity_id:
+                    type: string
+                    format: uuid
+                  conversation_id:
+                    type: string
+                    format: uuid
+                  room_id:
+                    type: string
+                    format: uuid
+                  room_number:
+                    type: string
+                  status:
+                    type: string
+                  is_handoff:
+                    type: boolean
+
+  /integrations/conversations/{conversation}/context:
+    get:
+      tags:
+        - Integrations
+      summary: Get conversation context
+      description: Get conversation context for LLM (for n8n)
+      parameters:
+        - name: conversation
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: limit
+          in: query
+          description: Number of recent messages
+          schema:
+            type: integer
+            default: 5
+        - name: include_tickets
+          in: query
+          schema:
+            type: string
+            enum: ['true', 'false']
+            default: 'true'
+      responses:
+        '200':
+          description: Conversation context
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  conversation_id:
+                    type: string
+                    format: uuid
+                  room:
+                    type: object
+                    properties:
+                      room_number:
+                        type: string
+                      floor:
+                        type: integer
+                      room_type:
+                        type: string
+                  recent_messages:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        role:
+                          type: string
+                        content:
+                          type: string
+                        created_at:
+                          type: string
+                          format: date-time
+                  open_tickets:
+                    type: array
+                    items:
+                      type: object
+                  open_tickets_count:
+                    type: integer
+
+  /integrations/conversations/{conversation}/chat-id:
+    get:
+      tags:
+        - Integrations
+      summary: Get chat ID
+      description: Get chat ID for a conversation (for proactive notifications)
+      parameters:
+        - name: conversation
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Chat ID
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  chat_id:
+                    type: string
+                  channel_type:
+                    type: string
+        '404':
+          description: Chat ID not found
+
+  /integrations/conversations/{conversation}/messages:
+    post:
+      tags:
+        - Integrations
+      summary: Log message
+      description: Log a message to conversation (for n8n)
+      parameters:
+        - name: conversation
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - role
+                - content
+              properties:
+                role:
+                  type: string
+                  enum: [guest, agent, staff, system]
+                content:
+                  type: string
+                extracted_entities:
+                  type: object
+      responses:
+        '201':
+          description: Message logged
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message_id:
+                    type: string
+                    format: uuid
+                  created_at:
+                    type: string
+                    format: date-time
+
+  /integrations/tickets:
+    post:
+      tags:
+        - Integrations
+      summary: Create ticket
+      description: Create a ticket from n8n with auto-assignment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - conversation_id
+                - category
+                - priority
+                - description
+              properties:
+                conversation_id:
+                  type: string
+                  format: uuid
+                room_id:
+                  type: string
+                  format: uuid
+                category:
+                  type: string
+                  enum: [housekeeping, food_and_drinks, maintenance, room_service, other]
+                priority:
+                  type: string
+                  enum: [low, medium, high, urgent]
+                description:
+                  type: string
+                source:
+                  type: string
+                is_emergency:
+                  type: boolean
+      responses:
+        '201':
+          description: Ticket created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ticket_id:
+                    type: string
+                    format: uuid
+                  status:
+                    type: string
+                  department_id:
+                    type: string
+                    format: uuid
+                  assigned_staff_id:
+                    type: string
+                    format: uuid
+                  auto_assigned:
+                    type: boolean
+                  notification_sent:
+                    type: boolean
+        '422':
+          description: Room information required or department not found
+
+  /integrations/conversations/{conversation}/handoff:
+    post:
+      tags:
+        - Integrations
+      summary: Handoff conversation
+      description: Mark conversation for human handoff (for n8n)
+      parameters:
+        - name: conversation
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+                priority:
+                  type: string
+                  enum: [low, medium, high, urgent]
+      responses:
+        '200':
+          description: Handoff requested
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  conversation_id:
+                    type: string
+                    format: uuid
+                  status:
+                    type: string
+                  handoff_requested:
+                    type: boolean
+
+  /integrations/qr/resolve:
+    post:
+      tags:
+        - Integrations
+      summary: Resolve QR token
+      description: Resolve QR token from /start command (for n8n)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - token
+              properties:
+                token:
+                  type: string
+      responses:
+        '200':
+          description: Token resolved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  room_id:
+                    type: string
+                    format: uuid
+                  room_number:
+                    type: string
+                  floor:
+                    type: integer
+                  room_type:
+                    type: string
+                  token_id:
+                    type: string
+                    format: uuid
+                  success:
+                    type: boolean
+        '404':
+          description: Invalid or expired token
+
+  # ==========================================
+  # WEBHOOKS
+  # ==========================================
+  /webhooks/n8n/ticket-updated:
+    post:
+      tags:
+        - Webhooks
+      summary: Ticket updated webhook
+      description: Webhook endpoint for n8n ticket status updates
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Webhook received
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  received:
+                    type: boolean
+                    example: true

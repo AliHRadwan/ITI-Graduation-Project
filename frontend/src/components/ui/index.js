@@ -11,4 +11,5 @@ export { default as Pagination } from './Pagination';
 export { default as Tabs, TabList, TabButton, TabPanels, TabPanel } from './Tabs';
 export { default as Dropdown, DropdownItem } from './Dropdown';
 export { default as EmptyState } from './EmptyState';
+export { default as ConfirmDialog } from './ConfirmDialog';
 

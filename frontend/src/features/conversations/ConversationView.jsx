@@ -174,7 +174,9 @@ export default function ConversationView() {
                       >
                         <div
                           className={`max-w-[70%] rounded-lg p-4 ${
-                            isUser ? 'bg-gray-100' : 'bg-blue-600 text-white'
+                            isUser
+                              ? 'bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-slate-100'
+                              : 'bg-blue-600 text-white'
                           }`}
                         >
                           <div className="flex items-center gap-2 mb-1">
@@ -196,7 +198,7 @@ export default function ConversationView() {
 
               {/* Message Input */}
               {normalizedStatus !== 'CLOSED' && (
-                <div className="border-t border-gray-200 p-4">
+                <div className="border-t border-gray-200 dark:border-gray-800 p-4">
                   <div className="flex gap-2">
                     <Textarea
                       value={messageText}

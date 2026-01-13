@@ -7,6 +7,10 @@ import { ROLES, isManagerOrAdmin } from '@/utils/permissions';
 import LoginPage from '@/features/auth/LoginPage';
 import ForgotPasswordPage from '@/features/auth/ForgotPasswordPage';
 import UnauthorizedPage from '@/features/auth/UnauthorizedPage';
+import AcceptInvitePage from '@/features/auth/AcceptInvitePage';
+
+// Documentation
+import ApiDocsPage from '@/features/docs/ApiDocsPage';
 
 // Admin Layout & Pages
 import AdminLayout from '@/components/layout/AdminLayout';
@@ -20,10 +24,13 @@ import StaffList from '@/features/staff/StaffList';
 import DepartmentList from '@/features/staff/DepartmentList';
 import KnowledgeBaseList from '@/features/knowledge/KnowledgeBaseList';
 import AdminSettings from '@/features/settings/AdminSettings';
+import AttachmentsList from '@/features/attachments/AttachmentsList';
+import NotificationsLog from '@/features/notifications/NotificationsLog';
 
 // Staff Layout & Pages
 import StaffLayout from '@/components/layout/StaffLayout';
 import StaffQueue from '@/features/staff/StaffQueue';
+import StaffActionCenter from '@/features/staff/StaffActionCenter';
 import StaffMetrics from '@/features/staff/StaffMetrics';
 import StaffSettings from '@/features/settings/StaffSettings';
 
@@ -51,8 +58,16 @@ const router = createBrowserRouter([
     element: <ForgotPasswordPage />,
   },
   {
+    path: '/accept-invite',
+    element: <AcceptInvitePage />,
+  },
+  {
     path: '/unauthorized',
     element: <UnauthorizedPage />,
+  },
+  {
+    path: '/docs',
+    element: <ApiDocsPage />,
   },
   {
     path: '/',
@@ -92,6 +107,14 @@ const router = createBrowserRouter([
         element: <RoomList />,
       },
       {
+        path: 'attachments',
+        element: <AttachmentsList />,
+      },
+      {
+        path: 'notifications-logs',
+        element: <NotificationsLog />,
+      },
+      {
         path: 'staff/users',
         element: <StaffList />,
       },
@@ -121,6 +144,10 @@ const router = createBrowserRouter([
       {
         path: 'queue',
         element: <StaffQueue />,
+      },
+      {
+        path: 'action-center',
+        element: <StaffActionCenter />,
       },
       {
         path: 'conversations',

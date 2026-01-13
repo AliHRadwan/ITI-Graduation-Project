@@ -8,8 +8,10 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
+import { useReducedMotion } from 'framer-motion';
 
 export default function TicketTrendChart({ data }) {
+  const shouldReduceMotion = useReducedMotion();
   if (!data || data.length === 0) {
     return (
       <div className="h-64 flex items-center justify-center text-gray-500">
@@ -32,6 +34,8 @@ export default function TicketTrendChart({ data }) {
           stroke="#3b82f6"
           strokeWidth={2}
           name="New"
+          isAnimationActive={!shouldReduceMotion}
+          animationDuration={400}
         />
         <Line
           type="monotone"
@@ -39,9 +43,10 @@ export default function TicketTrendChart({ data }) {
           stroke="#10b981"
           strokeWidth={2}
           name="Resolved"
+          isAnimationActive={!shouldReduceMotion}
+          animationDuration={400}
         />
       </LineChart>
     </ResponsiveContainer>
   );
 }
-

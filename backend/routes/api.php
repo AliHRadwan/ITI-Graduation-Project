@@ -16,7 +16,7 @@ use App\Http\Controllers\Api\StaffRoleController;
 use App\Http\Controllers\Api\StaffMembershipController;
 use App\Http\Controllers\Api\LoginController;
 use App\Http\Controllers\Api\IntegrationController;
-
+use Illuminate\Support\Facades\Response;
 
 
 //==============ali gamal========================================================================
@@ -70,6 +70,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/conversations/{conversation}/messages', [MessageController::class, 'store']);
 
     // 6) Attachments
+    Route::get('/attachments', [AttachmentController::class, 'index'])->middleware('manager.or.admin');
     Route::post('/attachments/upload', [AttachmentController::class, 'upload']);
     Route::get('/attachments/{attachment}', [AttachmentController::class, 'show']);
     Route::post('/messages/{message}/attachments', [AttachmentController::class, 'attachToMessage']);
@@ -182,3 +183,18 @@ Route::prefix('routing-rules')->middleware('auth:sanctum')->group(function () {
     Route::patch('{routingRule}', [RoutingRuleController::class, 'update'])->middleware('manager.or.admin');
     Route::post('{routingRule}/deactivate', [RoutingRuleController::class, 'deactivate'])->middleware('manager.or.admin');
 });
+
+
+if (app()->environment('local')) { 
+    Route::get('/docs', function () {
+        $path = base_path('swagger.yaml');
+
+        if (!file_exists($path)) {
+            return response()->json(['message' => 'File not found'], 404);
+        }
+
+        return Response::file($path, [
+            'Content-Type' => 'text/yaml',
+        ]);
+    });
+}

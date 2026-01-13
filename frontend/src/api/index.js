@@ -10,3 +10,8 @@ export { slaAPI } from './sla';
 export { departmentsAPI } from './departments';
 export { guestsAPI } from './guests';
 export { knowledgeAPI } from './knowledge';
+export { notificationsAPI } from './notifications';
+export { proactiveRulesAPI } from './proactiveRules';
+export { routingRulesAPI } from './routingRules';
+export { attachmentsAPI } from './attachments';
+export { searchAPI } from './search';

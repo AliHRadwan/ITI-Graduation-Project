@@ -11,7 +11,7 @@ const ticketSchema = z.object({
   conversation_id: z.string().min(1, 'Conversation is required'),
   room_id: z.string().min(1, 'Room is required'),
   department_id: z.string().min(1, 'Department is required'),
-  category: z.enum(['housekeeping', 'food_and_drinks', 'maintenance', 'room_service', 'other']),
+  category: z.string().min(1, 'Category is required'),
   priority: z.enum(['low', 'med', 'high', 'urgent']),
   status: z.enum(['new', 'doing', 'done', 'canceled']),
   description: z.string().min(10, 'Description must be at least 10 characters'),
@@ -51,7 +51,6 @@ export default function CreateTicketModal({ isOpen, onClose, onSuccess }) {
     resolver: zodResolver(ticketSchema),
     defaultValues: {
       priority: 'med',
-      category: 'other',
       status: 'new',
     },
   });
@@ -79,7 +78,7 @@ export default function CreateTicketModal({ isOpen, onClose, onSuccess }) {
             { value: '', label: 'Select a room' },
             ...(rooms?.map((room) => ({
               value: room.id,
-              label: `${room.room_number} - ${room.room_type}`,
+              label: `${room.room_number} `,
             })) || []),
           ]}
           error={errors.room_id?.message}
@@ -112,15 +111,9 @@ export default function CreateTicketModal({ isOpen, onClose, onSuccess }) {
           {...register('conversation_id')}
         />
 
-        <Select
+        <Input
           label="Category"
-          options={[
-            { value: 'housekeeping', label: 'Housekeeping' },
-            { value: 'food_and_drinks', label: 'Food & Drinks' },
-            { value: 'maintenance', label: 'Maintenance' },
-            { value: 'room_service', label: 'Room Service' },
-            { value: 'other', label: 'Other' },
-          ]}
+          placeholder="e.g. Housekeeping"
           error={errors.category?.message}
           {...register('category')}
         />

@@ -8,9 +8,8 @@ Context:
 Instructions:
 1. Answer the question using ONLY the information from the context above.
 2. If the context does not contain relevant information to answer the question, respond with: "I don't have that information in the hotel knowledge base."
-3. Include citations at the end of sentences where you use information from the context. Use this format: (Source: doc_collection/source_file — section_title)
-4. Be concise and helpful.
-5. If multiple sources provide the same information, cite all relevant sources.
+3. Be concise and helpful. Do NOT include citations, source references, or document names in your answer.
+4. Provide a natural, conversational response without mentioning file paths, document names, or source information.
 
 Question: {question}
 
@@ -19,7 +18,7 @@ Answer:"""
 
 def format_context_with_citations(chunks: list) -> str:
     """
-    Format retrieved chunks as numbered context snippets with citation strings.
+    Format retrieved chunks as numbered context snippets (without explicit citations for LLM).
 
     Args:
         chunks: List of (chunk, distance) tuples from retrieval
@@ -29,9 +28,9 @@ def format_context_with_citations(chunks: list) -> str:
     """
     context_parts = []
     for i, (chunk, distance) in enumerate(chunks, 1):
-        citation = f"{chunk.doc_collection}/{chunk.source_file} — {chunk.section_title}"
+        # Include content without citation format - LLM doesn't need it
         context_parts.append(
-            f"[{i}] {chunk.content}\n(Citation: {citation})"
+            f"[{i}] {chunk.content}"
         )
     return "\n\n".join(context_parts)
 
