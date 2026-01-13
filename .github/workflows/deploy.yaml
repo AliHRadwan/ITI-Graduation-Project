@@ -4,7 +4,7 @@ name: PHP/Laravel CD
 on:
   push:
     branches:
-      - main  # Run CD on push to main
+      - develop  # Run CD on push to develop
 
   workflow_dispatch:
 
@@ -14,7 +14,7 @@ jobs:
     name: Deploy to AWS
     runs-on: ubuntu-latest
 
-    # Only deploy on a direct push to 'main'
+    # Only deploy on a direct push to 'develop'
     if: github.event_name == 'push'
 
     steps:
@@ -25,33 +25,50 @@ jobs:
         username: ${{ secrets.EC2_USER }}   # e.g., root or a deploy user
         key: ${{ secrets.SSH_PRIVATE_KEY }} # Your SSH private key
         script: |
-          cd /home/ubuntu/ITI-Graduation-Project/backend 
-          sudo -u www-data php artisan down
-          
+          # 1. Gain ownership to perform git operations
+          sudo chown -R ubuntu:ubuntu /home/ubuntu/ITI-Graduation-Project
           cd /home/ubuntu/ITI-Graduation-Project
-          git pull origin main
+
+          # 2. CRITICAL: Wipe local changes so git pull doesn't fail
+          git restore .
+          git clean -fd
           
-          cd /home/ubuntu/ITI-Graduation-Project/backend 
-          sudo -u www-data composer install --no-dev --no-interaction --optimize-autoloader
-          sudo -u www-data php artisan migrate --force
-          sudo -u www-data php artisan optimize:clear
+          # 3. Pull the latest code
+          # (Note: Ensure this matches your 'on: push:' branch above)
+          git pull origin develop
+
+          # 4. Backend (Laravel) tasks
+          cd /home/ubuntu/ITI-Graduation-Project/backend
+          php artisan down
+          composer install --no-dev --no-interaction --optimize-autoloader
+          php artisan migrate --force
+          php artisan optimize:clear
           
+          # 5. Frontend (Vite) tasks
           cd /home/ubuntu/ITI-Graduation-Project/frontend
-          sudo chown -R ubuntu:ubuntu /home/ubuntu/ITI-Graduation-Project/frontend
           npm install
-          export NODE_OPTIONS="--max-old-space-size=3000"
+          export NODE_OPTIONS="--max-old-space-size=4000"
           npm run build
-          sudo chown -R www-data:www-data /home/ubuntu/ITI-Graduation-Project/frontend
           
+          # 6. Python AI Service tasks
           cd /home/ubuntu/ITI-Graduation-Project/Hotel_Service_Project/hotel-rag-backend
-          sudo python3 -m venv venv
+          # Only create venv if it doesn't exist to save time
+          [ -d "venv" ] || python3 -m venv venv
           source venv/bin/activate
           pip install --no-cache-dir --timeout 1000 -r requirements.txt
           deactivate
 
+          # 7. Finalize Laravel
           cd /home/ubuntu/ITI-Graduation-Project/backend
-          sudo -u www-data php artisan optimize
-          sudo -u www-data php artisan up
+          php artisan optimize
+          php artisan up
+
+          # 8. Permissions & Services
+          # Setting storage/cache to www-data so the webserver can write to them
+          sudo chown -R www-data:www-data /home/ubuntu/ITI-Graduation-Project/frontend/dist
+          sudo chown -R www-data:www-data /home/ubuntu/ITI-Graduation-Project/backend/storage
+          sudo chown -R www-data:www-data /home/ubuntu/ITI-Graduation-Project/backend/bootstrap/cache
+          
           sudo systemctl daemon-reload
           sudo systemctl restart php8.3-fpm
           sudo systemctl restart hotel_rag

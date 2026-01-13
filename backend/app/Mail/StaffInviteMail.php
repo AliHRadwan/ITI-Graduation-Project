@@ -42,7 +42,7 @@ class StaffInviteMail extends Mailable
      */
     public function content(): Content
     {
-        $acceptUrl = config('app.frontend_url', 'http://localhost:3000') . '/accept-invite?token=' . $this->token . '&email=' . urlencode($this->email);
+        $acceptUrl = config('app.frontend_url', 'http://localhost:8000') . '/accept-invite?token=' . $this->token . '&email=' . urlencode($this->email);
         
         return new Content(
             markdown: 'emails.staff-invite',

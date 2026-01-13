@@ -6,7 +6,7 @@ import { z } from 'zod';
 import toast from 'react-hot-toast';
 import { authAPI } from '@/api';
 import useAuthStore from '@/store/authStore';
-import { isAdmin, isManagerOrAdmin } from '@/utils/permissions';
+import { isAdmin, isManagerOrAdmin, isStaffRole } from '@/utils/permissions';
 import { Button, Input, Card } from '@/components/ui';
 import { useTheme } from '@/context/ThemeContext';
 import PageTransition from '@/components/animations/PageTransition';
@@ -57,23 +57,57 @@ export default function AcceptInvitePage() {
 
       if (response?.token) {
         localStorage.setItem('token', response.token);
-        const me = await authAPI.me();
-        const user = me.user || me;
-        localStorage.setItem('user', JSON.stringify(user));
-        useAuthStore.setState({
-          user,
-          token: response.token,
-          isAuthenticated: true,
-          isLoading: false,
-          error: null,
-        });
+        
+        try {
+          const me = await authAPI.me();
+          const user = me.user || me;
+          localStorage.setItem('user', JSON.stringify(user));
+          useAuthStore.setState({
+            user,
+            token: response.token,
+            isAuthenticated: true,
+            isLoading: false,
+            error: null,
+          });
 
-        if (isAdmin(user) || isManagerOrAdmin(user)) {
-          navigate('/admin/dashboard');
-        } else {
-          navigate('/staff/queue');
+          // Check if user has any roles assigned
+          const hasMemberships = user.memberships && user.memberships.length > 0;
+          
+          if (!hasMemberships) {
+            // User has no roles assigned yet - show message and redirect to login
+            toast.success('Account activated! Please contact your administrator to assign your role.');
+            // Clear auth since user can't access any protected routes yet
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            useAuthStore.setState({
+              user: null,
+              token: null,
+              isAuthenticated: false,
+              isLoading: false,
+              error: null,
+            });
+            navigate('/login');
+            return;
+          }
+
+          // User has roles - navigate to appropriate dashboard
+          if (isAdmin(user) || isManagerOrAdmin(user)) {
+            navigate('/admin/dashboard');
+          } else if (isStaffRole(user)) {
+            navigate('/staff/queue');
+          } else {
+            // Fallback: has memberships but role not recognized - go to login
+            toast.success('Account activated! Please login to continue.');
+            navigate('/login');
+          }
+          return;
+        } catch (meError) {
+          // Failed to get user info - redirect to login
+          console.error('Failed to fetch user info:', meError);
+          toast.success('Account activated! Please login to continue.');
+          navigate('/login');
+          return;
         }
-        return;
       }
 
       navigate('/login');
