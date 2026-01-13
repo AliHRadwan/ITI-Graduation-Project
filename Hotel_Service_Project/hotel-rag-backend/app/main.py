@@ -211,7 +211,8 @@ async def ask_question(
 class IngestDocumentRequest(BaseModel):
     """Request model for /ingest-document endpoint."""
 
-    file_path: str = Field(..., description="Absolute path to the .docx file")
+    file_content: str = Field(..., description="Base64 encoded file content")
+    file_name: str = Field(..., description="Original file name")
     doc_collection: str = Field(..., description="Collection name (category folder)")
 
 
@@ -234,71 +235,84 @@ async def ingest_document(
     
     This endpoint processes a single .docx file, extracts sections,
     generates embeddings, and stores chunks in the database.
+    
+    The file is sent as base64-encoded content to avoid file system
+    path dependencies between servers.
     """
     try:
+        import base64
+        import tempfile
         from pathlib import Path
-        import os
         from app.ingest import process_file
         from langchain_google_genai import GoogleGenerativeAIEmbeddings
         
-        logger.info(f"Received ingestion request for: {request.file_path}")
+        logger.info(f"Received ingestion request for: {request.file_name}")
         
-        # Validate and resolve file path
-        # Handle both absolute paths and paths with ~ (home directory)
-        file_path_str = request.file_path
-        
-        # Expand ~ to home directory if present
-        if file_path_str.startswith('~'):
-            file_path_str = os.path.expanduser(file_path_str)
-        
-        # Convert to Path object and resolve to absolute path
-        file_path = Path(file_path_str).resolve()
-        
-        logger.info(f"Resolved file path: {file_path}")
-        
-        if not file_path.exists():
-            raise HTTPException(
-                status_code=404, 
-                detail=f"File not found: {file_path} (original: {request.file_path})"
-            )
-        
-        if not file_path.suffix.lower() == '.docx':
+        # Validate file extension
+        file_name_lower = request.file_name.lower()
+        if not file_name_lower.endswith('.docx'):
             raise HTTPException(status_code=400, detail="Only .docx files are supported")
         
-        # Initialize embeddings
-        embeddings = GoogleGenerativeAIEmbeddings(
-            model=settings.embedding_model,
-            google_api_key=settings.google_api_key,
-            output_dimensionality=settings.embedding_dim,
-        )
+        # Decode base64 file content
+        try:
+            file_content = base64.b64decode(request.file_content)
+        except Exception as e:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid base64 file content: {str(e)}"
+            )
         
-        # Process the file
-        # Count chunks before processing
-        from app.db import RAGChunk
-        chunks_before = db.query(RAGChunk).filter(
-            RAGChunk.doc_collection == request.doc_collection,
-            RAGChunk.source_file == file_path.name
-        ).count()
-        
-        # Process the file
-        process_file(file_path, request.doc_collection, db, embeddings)
-        
-        # Count chunks after processing
-        chunks_after = db.query(RAGChunk).filter(
-            RAGChunk.doc_collection == request.doc_collection,
-            RAGChunk.source_file == file_path.name
-        ).count()
-        
-        new_chunks = chunks_after - chunks_before
-        
-        logger.info(f"Successfully ingested {new_chunks} chunks from {file_path.name}")
-        
-        return IngestDocumentResponse(
-            success=True,
-            message=f"Successfully ingested {new_chunks} chunks",
-            chunks_count=new_chunks,
-            file_name=file_path.name
-        )
+        # Create temporary file
+        tmp_file_path = None
+        try:
+            with tempfile.NamedTemporaryFile(delete=False, suffix='.docx') as tmp_file:
+                tmp_file.write(file_content)
+                tmp_file_path = Path(tmp_file.name)
+            
+            logger.info(f"Created temporary file: {tmp_file_path}")
+            
+            # Initialize embeddings
+            embeddings = GoogleGenerativeAIEmbeddings(
+                model=settings.embedding_model,
+                google_api_key=settings.google_api_key,
+                output_dimensionality=settings.embedding_dim,
+            )
+            
+            # Process the file
+            # Count chunks before processing
+            from app.db import RAGChunk
+            chunks_before = db.query(RAGChunk).filter(
+                RAGChunk.doc_collection == request.doc_collection,
+                RAGChunk.source_file == request.file_name
+            ).count()
+            
+            # Process the file
+            process_file(tmp_file_path, request.doc_collection, db, embeddings)
+            
+            # Count chunks after processing
+            chunks_after = db.query(RAGChunk).filter(
+                RAGChunk.doc_collection == request.doc_collection,
+                RAGChunk.source_file == request.file_name
+            ).count()
+            
+            new_chunks = chunks_after - chunks_before
+            
+            logger.info(f"Successfully ingested {new_chunks} chunks from {request.file_name}")
+            
+            return IngestDocumentResponse(
+                success=True,
+                message=f"Successfully ingested {new_chunks} chunks",
+                chunks_count=new_chunks,
+                file_name=request.file_name
+            )
+        finally:
+            # Clean up temporary file
+            if tmp_file_path and tmp_file_path.exists():
+                try:
+                    tmp_file_path.unlink()
+                    logger.info(f"Cleaned up temporary file: {tmp_file_path}")
+                except Exception as e:
+                    logger.warning(f"Failed to delete temporary file {tmp_file_path}: {e}")
         
     except HTTPException:
         raise

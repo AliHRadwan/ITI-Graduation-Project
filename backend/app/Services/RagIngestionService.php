@@ -25,15 +25,30 @@ class RagIngestionService
     public function ingestDocument(string $filePath, string $docCollection): array
     {
         try {
+            // Read file content and encode to base64
+            if (!file_exists($filePath)) {
+                throw new \Exception("File not found: {$filePath}");
+            }
+
+            $fileContent = file_get_contents($filePath);
+            if ($fileContent === false) {
+                throw new \Exception("Failed to read file: {$filePath}");
+            }
+
+            $base64Content = base64_encode($fileContent);
+            $fileName = basename($filePath);
+
             Log::info("Calling RAG API to ingest document", [
-                'file_path' => $filePath,
+                'file_name' => $fileName,
+                'file_size' => strlen($fileContent),
                 'doc_collection' => $docCollection,
                 'api_url' => $this->ragApiUrl,
             ]);
 
             $response = Http::timeout(300) // 5 minutes timeout for large files
                 ->post("{$this->ragApiUrl}/ingest-document", [
-                    'file_path' => $filePath,
+                    'file_content' => $base64Content,
+                    'file_name' => $fileName,
                     'doc_collection' => $docCollection,
                 ]);
 
