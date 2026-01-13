@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { staffAPI } from '@/api';
-import { Button, Badge, Table, TableHead, TableBody, TableRow, TableHeader, TableCell, Spinner, EmptyState, Pagination, Input } from '@/components/ui';
+import { Button, Badge, Table, TableHead, TableBody, TableRow, TableHeader, TableCell, Spinner, EmptyState, Pagination, Input, ConfirmDialog } from '@/components/ui';
 import { PlusIcon, UsersIcon } from '@heroicons/react/24/outline';
 import InviteStaffModal from './InviteStaffModal';
 import EditStaffModal from './EditStaffModal';
@@ -12,6 +12,8 @@ export default function StaffList() {
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [userToDelete, setUserToDelete] = useState(null);
   const [page, setPage] = useState(1);
   const perPage = 5;
   const [searchTerm, setSearchTerm] = useState('');
@@ -67,9 +69,8 @@ export default function StaffList() {
 
   const handleDelete = (user) => {
     if (!user?.id) return;
-    const confirmed = window.confirm(`Delete "${user.name}"? This cannot be undone.`);
-    if (!confirmed) return;
-    deleteMutation.mutate(user.id);
+    setUserToDelete(user);
+    setShowDeleteConfirm(true);
   };
 
   return (
@@ -226,6 +227,32 @@ export default function StaffList() {
           }}
         />
       )}
+
+      <ConfirmDialog
+        isOpen={showDeleteConfirm}
+        title="Delete staff member"
+        message={
+          userToDelete
+            ? `Delete "${userToDelete.name}"? This cannot be undone.`
+            : 'Delete this staff member? This cannot be undone.'
+        }
+        confirmLabel="Delete"
+        confirmVariant="danger"
+        isLoading={deleteMutation.isLoading}
+        onCancel={() => {
+          setShowDeleteConfirm(false);
+          setUserToDelete(null);
+        }}
+        onConfirm={() => {
+          if (!userToDelete) return;
+          deleteMutation.mutate(userToDelete.id, {
+            onSettled: () => {
+              setShowDeleteConfirm(false);
+              setUserToDelete(null);
+            },
+          });
+        }}
+      />
     </div>
   );
 }

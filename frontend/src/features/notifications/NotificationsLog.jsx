@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { notificationsAPI } from '@/api';
-import { Card, Button, Badge, Spinner, Pagination, EmptyState } from '@/components/ui';
+import { Card, Button, Badge, Spinner, Pagination, EmptyState, Input } from '@/components/ui';
 import toast from 'react-hot-toast';
 import { format } from 'date-fns';
 
@@ -76,25 +76,23 @@ export default function NotificationsLog() {
           </div>
           <div>
             <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Ticket ID</label>
-            <input
+            <Input
               value={ticketId}
               onChange={(e) => {
                 setTicketId(e.target.value);
                 setPage(1);
               }}
-              className="mt-1 w-full rounded-md border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
               placeholder="Filter by ticket"
             />
           </div>
           <div>
             <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Conversation ID</label>
-            <input
+            <Input
               value={conversationId}
               onChange={(e) => {
                 setConversationId(e.target.value);
                 setPage(1);
               }}
-              className="mt-1 w-full rounded-md border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
               placeholder="Filter by conversation"
             />
           </div>

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { departmentsAPI } from '@/api';
-import { Button, Badge, Table, TableHead, TableBody, TableRow, TableHeader, TableCell, Spinner, EmptyState, Pagination, Input } from '@/components/ui';
+import { Button, Badge, Table, TableHead, TableBody, TableRow, TableHeader, TableCell, Spinner, EmptyState, Pagination, Input, ConfirmDialog } from '@/components/ui';
 import { PlusIcon, BuildingOfficeIcon } from '@heroicons/react/24/outline';
 import CreateDepartmentModal from './CreateDepartmentModal';
 import EditDepartmentModal from './EditDepartmentModal';
@@ -12,6 +12,8 @@ export default function DepartmentList() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedDepartment, setSelectedDepartment] = useState(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [departmentToDelete, setDepartmentToDelete] = useState(null);
   const [page, setPage] = useState(1);
   const perPage = 5;
   const [searchTerm, setSearchTerm] = useState('');
@@ -58,9 +60,8 @@ export default function DepartmentList() {
 
   const handleDelete = (department) => {
     if (!department?.id) return;
-    const confirmed = window.confirm(`Delete "${department.name}"? This cannot be undone.`);
-    if (!confirmed) return;
-    deleteMutation.mutate(department.id);
+    setDepartmentToDelete(department);
+    setShowDeleteConfirm(true);
   };
 
   return (
@@ -199,6 +200,32 @@ export default function DepartmentList() {
           }}
         />
       )}
+
+      <ConfirmDialog
+        isOpen={showDeleteConfirm}
+        title="Delete department"
+        message={
+          departmentToDelete
+            ? `Delete "${departmentToDelete.name}"? This cannot be undone.`
+            : 'Delete this department? This cannot be undone.'
+        }
+        confirmLabel="Delete"
+        confirmVariant="danger"
+        isLoading={deleteMutation.isLoading}
+        onCancel={() => {
+          setShowDeleteConfirm(false);
+          setDepartmentToDelete(null);
+        }}
+        onConfirm={() => {
+          if (!departmentToDelete) return;
+          deleteMutation.mutate(departmentToDelete.id, {
+            onSettled: () => {
+              setShowDeleteConfirm(false);
+              setDepartmentToDelete(null);
+            },
+          });
+        }}
+      />
     </div>
   );
 }
