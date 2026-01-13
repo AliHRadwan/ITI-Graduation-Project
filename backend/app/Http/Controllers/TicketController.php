@@ -170,6 +170,13 @@ class TicketController extends Controller
             'note' => 'sometimes|string|max:500',
         ]);
 
+        $user = $request->user();
+        if (!Gate::forUser($user)->allows('ticket.updateStatus', $ticket)) {
+            return response()->json([
+                'message' => 'You do not have permission to change the status of this ticket.',
+            ], 403);
+        }
+
         $oldStatus = $ticket->status;
         $ticket->status = $validated['status'];
         $ticket->save();
