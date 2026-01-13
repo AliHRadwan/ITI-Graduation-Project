@@ -9,6 +9,9 @@ import ForgotPasswordPage from '@/features/auth/ForgotPasswordPage';
 import UnauthorizedPage from '@/features/auth/UnauthorizedPage';
 import AcceptInvitePage from '@/features/auth/AcceptInvitePage';
 
+// Documentation
+import ApiDocsPage from '@/features/docs/ApiDocsPage';
+
 // Admin Layout & Pages
 import AdminLayout from '@/components/layout/AdminLayout';
 import AnalyticsDashboard from '@/features/analytics/AnalyticsDashboard';
@@ -61,6 +64,10 @@ const router = createBrowserRouter([
   {
     path: '/unauthorized',
     element: <UnauthorizedPage />,
+  },
+  {
+    path: '/docs',
+    element: <ApiDocsPage />,
   },
   {
     path: '/',
