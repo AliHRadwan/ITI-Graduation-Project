@@ -1,0 +1,59 @@
+
+name: PHP/Laravel CD
+
+on:
+  push:
+    branches:
+      - main  # Run CD on push to main
+
+  workflow_dispatch:
+
+jobs:
+  
+  deploy:
+    name: Deploy to AWS
+    runs-on: ubuntu-latest
+
+    # Only deploy on a direct push to 'main'
+    if: github.event_name == 'push'
+
+    steps:
+    - name: 1. Deploy to Server via SSH
+      uses: appleboy/ssh-action@master
+      with:
+        host: ${{ secrets.AWS_HOST }}       # Your EC2 IP
+        username: ${{ secrets.EC2_USER }}   # e.g., root or a deploy user
+        key: ${{ secrets.SSH_PRIVATE_KEY }} # Your SSH private key
+        script: |
+          cd /home/ubuntu/ITI-Graduation-Project/backend 
+          sudo -u www-data php artisan down
+          
+          cd /home/ubuntu/ITI-Graduation-Project
+          git pull origin main
+          
+          cd /home/ubuntu/ITI-Graduation-Project/backend 
+          sudo -u www-data composer install --no-dev --no-interaction --optimize-autoloader
+          sudo -u www-data php artisan migrate --force
+          sudo -u www-data php artisan optimize:clear
+          
+          cd /home/ubuntu/ITI-Graduation-Project/frontend
+          sudo chown -R ubuntu:ubuntu /home/ubuntu/ITI-Graduation-Project/frontend
+          npm install
+          export NODE_OPTIONS="--max-old-space-size=3000"
+          npm run build
+          sudo chown -R www-data:www-data /home/ubuntu/ITI-Graduation-Project/frontend
+          
+          cd /home/ubuntu/ITI-Graduation-Project/Hotel_Service_Project/hotel-rag-backend
+          sudo python3 -m venv venv
+          source venv/bin/activate
+          pip install --no-cache-dir --timeout 1000 -r requirements.txt
+          deactivate
+
+          cd /home/ubuntu/ITI-Graduation-Project/backend
+          sudo -u www-data php artisan optimize
+          sudo -u www-data php artisan up
+          sudo systemctl daemon-reload
+          sudo systemctl restart php8.3-fpm
+          sudo systemctl restart hotel_rag
+          sudo systemctl restart nginx
+	        

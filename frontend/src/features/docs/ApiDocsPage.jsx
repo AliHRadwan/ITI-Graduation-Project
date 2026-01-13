@@ -104,8 +104,8 @@ export default function ApiDocsPage() {
               <ArrowPathIcon className="h-4 w-4 mr-2" />
               Retry
             </Button>
-            <Button variant="secondary" onClick={() => window.history.back()}>
-              Go Back
+            <Button variant="secondary" onClick={() => window.location.href = 'https://concierge.ddns.net/'}>
+              Go to Home
             </Button>
           </div>
           <p className="mt-6 text-xs text-slate-500 dark:text-slate-500">
@@ -141,10 +141,10 @@ export default function ApiDocsPage() {
             <Button 
               variant="secondary" 
               size="sm" 
-              onClick={() => window.history.back()}
+              onClick={() => window.location.href = 'https://concierge.ddns.net/'}
               className="!bg-slate-700 !text-white hover:!bg-slate-600 !border-slate-600"
             >
-              Back
+              Home
             </Button>
           </div>
         </div>
