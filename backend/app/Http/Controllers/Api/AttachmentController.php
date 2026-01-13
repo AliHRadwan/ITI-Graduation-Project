@@ -7,13 +7,48 @@ use App\Http\Controllers\Concerns\ApiResponse;
 use App\Http\Requests\UploadAttachmentRequest;
 use App\Http\Requests\AttachToMessageRequest;
 use App\Http\Resources\AttachmentResource;
+use App\Http\Resources\AttachmentListResource;
 use App\Models\Attachment;
 use App\Models\Message;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
 class AttachmentController extends Controller
 {
     use ApiResponse;
+
+    public function index(Request $request)
+    {
+        $perPage = (int) $request->input('per_page', 6);
+        $search = trim((string) $request->input('q', ''));
+
+        $attachments = Attachment::query()
+            ->leftJoin('messages', 'attachments.message_id', '=', 'messages.id')
+            ->leftJoin('conversations', 'messages.conversation_id', '=', 'conversations.id')
+            ->leftJoin('guest_identities', 'conversations.guest_identity_id', '=', 'guest_identities.id')
+            ->leftJoin('rooms', 'conversations.room_id', '=', 'rooms.id')
+            ->select('attachments.*')
+            ->with(['message.conversation.room', 'message.conversation.guestIdentity'])
+            ->when($search !== '', function ($query) use ($search) {
+                $like = '%' . $search . '%';
+                $query->where(function ($inner) use ($like) {
+                    $inner->where('attachments.storage_url', 'like', $like)
+                        ->orWhere('attachments.mime_type', 'like', $like)
+                        ->orWhere('attachments.type', 'like', $like)
+                        ->orWhere('messages.id', 'like', $like)
+                        ->orWhere('conversations.id', 'like', $like)
+                        ->orWhere('conversations.status', 'like', $like)
+                        ->orWhere('guest_identities.channel_user_id', 'like', $like)
+                        ->orWhere('rooms.room_number', 'like', $like);
+                });
+            })
+            ->orderByDesc('messages.created_at')
+            ->paginate($perPage);
+
+        $items = AttachmentListResource::collection($attachments->items())->resolve();
+
+        return $this->paginated($attachments, $items);
+    }
 
     public function upload(UploadAttachmentRequest $request)
     {

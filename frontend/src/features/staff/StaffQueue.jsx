@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { ticketsAPI } from '@/api';
-import { Badge, Spinner, EmptyState, Pagination, Button, Input } from '@/components/ui';
+import { ticketsAPI, departmentsAPI } from '@/api';
+import { Badge, Spinner, EmptyState, Pagination, Button, Select, Input } from '@/components/ui';
 import { TicketIcon } from '@heroicons/react/24/outline';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
@@ -37,11 +37,29 @@ export default function StaffQueue() {
   const perPage = 3;
   const [openHistory, setOpenHistory] = useState({});
   const [noteDrafts, setNoteDrafts] = useState({});
+  const [statusFilter, setStatusFilter] = useState('');
+  const [departmentFilter, setDepartmentFilter] = useState('');
 
   const { data, isLoading } = useQuery({
-    queryKey: ['my-tickets', user?.id, page],
-    queryFn: () => ticketsAPI.getTickets({ assigned_to: user?.id, page, per_page: perPage }),
+    queryKey: ['my-tickets', user?.id, page, statusFilter, departmentFilter],
+    queryFn: () =>
+      ticketsAPI.getTickets({
+        assigned_to: user?.id,
+        page,
+        per_page: perPage,
+        status: statusFilter || undefined,
+        department_id: departmentFilter || undefined,
+      }),
     refetchInterval: 10000,
+  });
+
+  const {
+    data: departmentsData,
+    isLoading: departmentsLoading,
+    isError: departmentsError,
+  } = useQuery({
+    queryKey: ['departments', 'staff-queue'],
+    queryFn: () => departmentsAPI.getDepartments({ per_page: 100 }),
   });
 
   const { data: slaBreaches } = useQuery({
@@ -102,6 +120,43 @@ export default function StaffQueue() {
       <div>
         <h1 className="text-2xl font-bold text-gray-900">My Queue</h1>
         <p className="text-gray-600">Tickets assigned to you</p>
+      </div>
+
+      <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 p-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <Select
+            label="Department"
+            value={departmentFilter}
+            onChange={(e) => {
+              setDepartmentFilter(e.target.value);
+              setPage(1);
+            }}
+            disabled={departmentsLoading || departmentsError}
+          >
+            <option value="">All Departments</option>
+            {departmentsLoading && <option value="">Loading…</option>}
+            {departmentsError && <option value="">Unable to load departments</option>}
+            {(departmentsData?.items || []).map((department) => (
+              <option key={department.id} value={department.id}>
+                {department.name}
+              </option>
+            ))}
+          </Select>
+          <Select
+            label="Status"
+            value={statusFilter}
+            onChange={(e) => {
+              setStatusFilter(e.target.value);
+              setPage(1);
+            }}
+          >
+            <option value="">All Status</option>
+            <option value="new">New</option>
+            <option value="doing">Doing</option>
+            <option value="done">Done</option>
+            <option value="canceled">Cancelled</option>
+          </Select>
+        </div>
       </div>
 
       {!tickets || tickets.length === 0 ? (

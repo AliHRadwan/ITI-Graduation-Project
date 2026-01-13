@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { slaAPI, departmentsAPI, authAPI, proactiveRulesAPI, routingRulesAPI } from '@/api';
-import { Card, CardHeader, CardTitle, CardContent, Button, Input, Modal, Table, TableHead, TableBody, TableRow, TableHeader, TableCell, Spinner, Pagination, Tabs, TabList, TabButton, TabPanels, TabPanel, Badge } from '@/components/ui';
+import { Card, CardHeader, CardTitle, CardContent, Button, Input, Textarea, Modal, Table, TableHead, TableBody, TableRow, TableHeader, TableCell, Spinner, Pagination, Tabs, TabList, TabButton, TabPanels, TabPanel, Badge } from '@/components/ui';
 import toast from 'react-hot-toast';
 import { useTheme } from '@/context/ThemeContext';
 import useAuthStore from '@/store/authStore';
@@ -768,15 +768,12 @@ export default function AdminSettings() {
             value={proactiveForm.message_template}
             onChange={(e) => setProactiveForm((prev) => ({ ...prev, message_template: e.target.value }))}
           />
-          <div>
-            <label className="text-sm font-medium text-gray-700">Trigger Config (JSON)</label>
-            <textarea
-              value={proactiveForm.trigger_config}
-              onChange={(e) => setProactiveForm((prev) => ({ ...prev, trigger_config: e.target.value }))}
-              rows={4}
-              className="mt-1 w-full rounded-md border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
-            />
-          </div>
+          <Textarea
+            label="Trigger Config (JSON)"
+            rows={4}
+            value={proactiveForm.trigger_config}
+            onChange={(e) => setProactiveForm((prev) => ({ ...prev, trigger_config: e.target.value }))}
+          />
           <div className="flex items-center gap-2 text-sm text-gray-700">
             <input
               id="proactive-active"

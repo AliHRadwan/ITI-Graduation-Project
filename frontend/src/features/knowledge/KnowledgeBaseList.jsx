@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { knowledgeAPI } from '@/api';
-import { Button, Badge, Spinner, EmptyState } from '@/components/ui';
+import { Button, Badge, Spinner, EmptyState, Input, ConfirmDialog } from '@/components/ui';
 import { PlusIcon, DocumentTextIcon, TrashIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
 import UploadDocumentModal from './UploadDocumentModal';
+import toast from 'react-hot-toast';
 
 const statusColors = {
   pending: 'warning',
@@ -32,6 +33,8 @@ export default function KnowledgeBaseList() {
   const [filterCategory, setFilterCategory] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [docToDelete, setDocToDelete] = useState(null);
 
   const queryClient = useQueryClient();
 
@@ -49,35 +52,30 @@ export default function KnowledgeBaseList() {
     mutationFn: knowledgeAPI.deleteDocument,
     onSuccess: () => {
       queryClient.invalidateQueries(['knowledge-documents']);
+      toast.success('Document deleted');
     },
+    onError: () => toast.error('Failed to delete document'),
   });
 
   const reprocessMutation = useMutation({
     mutationFn: knowledgeAPI.reprocessDocument,
     onSuccess: () => {
       queryClient.invalidateQueries(['knowledge-documents']);
+      toast.success('Reprocess started');
     },
+    onError: () => toast.error('Failed to reprocess document'),
   });
 
   const documents = data?.data || [];
   const pagination = data?.meta || data?.links || {};
 
   const handleDelete = async (id, title) => {
-    if (window.confirm(`Are you sure you want to delete "${title}"? This will remove it from the knowledge base.`)) {
-      try {
-        await deleteMutation.mutateAsync(id);
-      } catch (error) {
-        alert('Failed to delete document: ' + error.message);
-      }
-    }
+    setDocToDelete({ id, title });
+    setShowDeleteConfirm(true);
   };
 
   const handleReprocess = async (id) => {
-    try {
-      await reprocessMutation.mutateAsync(id);
-    } catch (error) {
-      alert('Failed to reprocess document: ' + error.message);
-    }
+    await reprocessMutation.mutateAsync(id);
   };
 
   const formatDate = (dateString) => {
@@ -119,12 +117,10 @@ export default function KnowledgeBaseList() {
       {/* Filters */}
       <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 p-4">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <input
-            type="text"
+          <Input
             placeholder="Search documents..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="rounded-md border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500"
           />
           <select
             value={filterStatus}
@@ -263,6 +259,32 @@ export default function KnowledgeBaseList() {
           }}
         />
       )}
+
+      <ConfirmDialog
+        isOpen={showDeleteConfirm}
+        title="Delete document"
+        message={
+          docToDelete
+            ? `Are you sure you want to delete "${docToDelete.title}"? This will remove it from the knowledge base.`
+            : 'Delete this document? This will remove it from the knowledge base.'
+        }
+        confirmLabel="Delete"
+        confirmVariant="danger"
+        isLoading={deleteMutation.isLoading}
+        onCancel={() => {
+          setShowDeleteConfirm(false);
+          setDocToDelete(null);
+        }}
+        onConfirm={() => {
+          if (!docToDelete) return;
+          deleteMutation.mutate(docToDelete.id, {
+            onSettled: () => {
+              setShowDeleteConfirm(false);
+              setDocToDelete(null);
+            },
+          });
+        }}
+      />
     </div>
   );
 }

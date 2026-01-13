@@ -7,6 +7,7 @@ import { ROLES, isManagerOrAdmin } from '@/utils/permissions';
 import LoginPage from '@/features/auth/LoginPage';
 import ForgotPasswordPage from '@/features/auth/ForgotPasswordPage';
 import UnauthorizedPage from '@/features/auth/UnauthorizedPage';
+import AcceptInvitePage from '@/features/auth/AcceptInvitePage';
 
 // Documentation
 import ApiDocsPage from '@/features/docs/ApiDocsPage';
@@ -55,6 +56,10 @@ const router = createBrowserRouter([
   {
     path: '/forgot-password',
     element: <ForgotPasswordPage />,
+  },
+  {
+    path: '/accept-invite',
+    element: <AcceptInvitePage />,
   },
   {
     path: '/unauthorized',
