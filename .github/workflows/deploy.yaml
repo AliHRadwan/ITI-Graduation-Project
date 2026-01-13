@@ -44,6 +44,9 @@ jobs:
           
           # 5. Frontend (Vite) tasks
           cd /home/ubuntu/ITI-Graduation-Project/frontend
+          # Load nvm and node (required for non-interactive SSH sessions)
+          export NVM_DIR="$HOME/.nvm"
+          [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
           npm install
           export NODE_OPTIONS="--max-old-space-size=4000"
           npm run build

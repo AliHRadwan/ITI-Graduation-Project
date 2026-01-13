@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Http\Requests\LoginFormRequest;
 use App\Models\StaffUser;
+use App\Models\StaffMembership;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -172,27 +173,48 @@ class LoginController extends Controller
     {
         // المفروض middleware admin موجود
         $request->validate([
-            'name'  => 'required|string',
-            'email' => 'required|email|unique:staff_users,email',
+            'name'          => 'required|string',
+            'email'         => 'required|email|unique:staff_users,email',
+            'role_id'       => 'required|exists:staff_roles,id',
+            'department_id' => 'required|uuid|exists:departments,id',
         ]);
 
         $inviteToken = Str::random(64);
 
-        $user = StaffUser::create([
-            'name'                    => $request->name,
-            'email'                   => $request->email,
-            'password'                => Hash::make(Str::random(32)),
-            'is_active'               => false,
-            'invite_token'            => Hash::make($inviteToken),
-            'invite_token_expires_at' => now()->addHours(1),
-        ]);
+        DB::beginTransaction();
+        try {
+            $user = StaffUser::create([
+                'name'                    => $request->name,
+                'email'                   => $request->email,
+                'password'                => Hash::make(Str::random(32)),
+                'is_active'               => false,
+                'invite_token'            => Hash::make($inviteToken),
+                'invite_token_expires_at' => now()->addDays(1),
+            ]);
 
-        // TODO: send invite email
-        Mail::to($request->email)->send(new StaffInviteMail($inviteToken, $request->email, $request->name));
+            // Create membership with role and department
+            StaffMembership::create([
+                'staff_user_id'  => $user->id,
+                'staff_role_id'  => $request->role_id,
+                'department_id'  => $request->department_id,
+            ]);
 
-        return response()->json([
-            'message' => 'Invitation created successfully.'
-        ], 201);
+            DB::commit();
+
+            // Send invite email
+            Mail::to($request->email)->send(new StaffInviteMail($inviteToken, $request->email, $request->name));
+
+            return response()->json([
+                'message' => 'Invitation created successfully.',
+                'user_id' => $user->id,
+            ], 201);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'message' => 'Failed to create invitation.',
+                'error'   => $e->getMessage(),
+            ], 500);
+        }
     }
 
     public function acceptInvite(Request $request)
