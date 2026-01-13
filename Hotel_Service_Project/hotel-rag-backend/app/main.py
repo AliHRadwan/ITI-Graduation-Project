@@ -237,15 +237,30 @@ async def ingest_document(
     """
     try:
         from pathlib import Path
+        import os
         from app.ingest import process_file
         from langchain_google_genai import GoogleGenerativeAIEmbeddings
         
         logger.info(f"Received ingestion request for: {request.file_path}")
         
-        # Validate file path
-        file_path = Path(request.file_path)
+        # Validate and resolve file path
+        # Handle both absolute paths and paths with ~ (home directory)
+        file_path_str = request.file_path
+        
+        # Expand ~ to home directory if present
+        if file_path_str.startswith('~'):
+            file_path_str = os.path.expanduser(file_path_str)
+        
+        # Convert to Path object and resolve to absolute path
+        file_path = Path(file_path_str).resolve()
+        
+        logger.info(f"Resolved file path: {file_path}")
+        
         if not file_path.exists():
-            raise HTTPException(status_code=404, detail=f"File not found: {request.file_path}")
+            raise HTTPException(
+                status_code=404, 
+                detail=f"File not found: {file_path} (original: {request.file_path})"
+            )
         
         if not file_path.suffix.lower() == '.docx':
             raise HTTPException(status_code=400, detail="Only .docx files are supported")
