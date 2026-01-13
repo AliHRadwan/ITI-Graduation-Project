@@ -20,7 +20,7 @@ info:
 servers:
   - url: http://localhost:8000/api
     description: Local Development Server
-  - url: https://api.example.com/api
+  - url: https://concierge.ddns.net/api
     description: Production Server
 
 tags:
