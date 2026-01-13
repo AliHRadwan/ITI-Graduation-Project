@@ -4,25 +4,33 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import toast from 'react-hot-toast';
-import { authAPI, staffAPI } from '@/api';
+import { authAPI, staffAPI, departmentsAPI } from '@/api';
 import { Modal, Button, Input, Select } from '@/components/ui';
 
 const inviteSchema = z.object({
   email: z.string().email('Invalid email address'),
   name: z.string().min(2, 'Name must be at least 2 characters'),
   role_id: z.string().min(1, 'Role is required'),
+  department_id: z.string().min(1, 'Department is required'),
 });
 
 export default function InviteStaffModal({ isOpen, onClose, onSuccess }) {
   const [isLoading, setIsLoading] = useState(false);
 
-  const { data } = useQuery({
+  const { data: rolesData } = useQuery({
     queryKey: ['staff-roles'],
     queryFn: staffAPI.getRoles,
     enabled: isOpen,
   });
 
-  const roles = Array.isArray(data) ? data : data?.data || [];
+  const { data: departmentsData } = useQuery({
+    queryKey: ['departments-list'],
+    queryFn: () => departmentsAPI.getDepartments({ per_page: 100 }),
+    enabled: isOpen,
+  });
+
+  const roles = Array.isArray(rolesData) ? rolesData : rolesData?.data || [];
+  const departments = departmentsData?.items || [];
 
   const {
     register,
@@ -70,12 +78,25 @@ export default function InviteStaffModal({ isOpen, onClose, onSuccess }) {
           options={[
             { value: '', label: 'Select a role' },
             ...(roles?.map((role) => ({
-              value: role.id,
+              value: String(role.id),
               label: role.name,
             })) || []),
           ]}
           error={errors.role_id?.message}
           {...register('role_id')}
+        />
+
+        <Select
+          label="Department"
+          options={[
+            { value: '', label: 'Select a department' },
+            ...(departments?.map((dept) => ({
+              value: dept.id,
+              label: dept.name,
+            })) || []),
+          ]}
+          error={errors.department_id?.message}
+          {...register('department_id')}
         />
 
         <div className="flex justify-end gap-3 pt-4">

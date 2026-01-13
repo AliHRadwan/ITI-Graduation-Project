@@ -819,7 +819,7 @@ paths:
       tags:
         - Authentication
       summary: Invite staff user
-      description: Send invitation to new staff member (Admin only)
+      description: Send invitation to new staff member with role and department assignment (Admin only)
       security:
         - bearerAuth: []
       requestBody:
@@ -831,17 +831,41 @@ paths:
               required:
                 - name
                 - email
+                - role_id
+                - department_id
               properties:
                 name:
                   type: string
+                  description: Full name of the staff member
                 email:
                   type: string
                   format: email
+                  description: Email address for the invitation
+                role_id:
+                  type: integer
+                  description: Staff role ID (admin, manager, staff)
+                department_id:
+                  type: string
+                  format: uuid
+                  description: Department ID to assign the staff member to
       responses:
         '201':
           description: Invitation created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Invitation created successfully.
+                  user_id:
+                    type: string
+                    format: uuid
         '403':
           description: Forbidden - Admin only
+        '422':
+          description: Validation error
 
   /auth/invite/accept:
     post:
