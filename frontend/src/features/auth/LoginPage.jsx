@@ -27,6 +27,10 @@ export default function LoginPage() {
     formState: { errors },
   } = useForm({
     resolver: zodResolver(loginSchema),
+    defaultValues: {
+      email: 'admin@hotel.com',
+      password: 'password',
+    },
   });
 
   const onSubmit = async (data) => {
