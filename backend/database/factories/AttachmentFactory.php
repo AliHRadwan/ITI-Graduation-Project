@@ -19,8 +19,6 @@ class AttachmentFactory extends Factory
             'mime_type' => 'image/jpeg',
             'size_bytes' => 12345,
             'transcript' => null,
-            'created_at' => $this->faker->dateTimeBetween('-1 month', 'now'),
-            'updated_at' => $this->faker->dateTimeBetween('-1 month', 'now'),
         ];
     }
 }
