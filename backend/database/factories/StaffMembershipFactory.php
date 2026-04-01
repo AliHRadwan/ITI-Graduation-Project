@@ -26,6 +26,8 @@ class StaffMembershipFactory extends Factory
             'staff_user_id' => StaffUser::factory(),
             'department_id' => Department::factory(),
             'staff_role_id' => StaffRole::factory(),
+            'created_at' => $this->faker->dateTimeBetween('-1 month', 'now'),
+            'updated_at' => $this->faker->dateTimeBetween('-1 month', 'now'),
         ];
     }
 }

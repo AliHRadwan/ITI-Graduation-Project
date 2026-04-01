@@ -14,6 +14,8 @@ class RoomFactory extends Factory
         return [
             'room_number' => (string) $this->faker->unique()->numberBetween(100, 999),
             'status' => $this->faker->randomElement(['available', 'occupied', 'maintenance']),
+            'created_at' => $this->faker->dateTimeBetween('-1 month', 'now'),
+            'updated_at' => $this->faker->dateTimeBetween('-1 month', 'now'),
         ];
     }
 }

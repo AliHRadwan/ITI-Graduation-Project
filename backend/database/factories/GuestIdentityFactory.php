@@ -20,6 +20,8 @@ class GuestIdentityFactory extends Factory
                 : 'anon_'.$this->faker->unique()->numberBetween(1000, 9999),
             'preferred_language' => $this->faker->randomElement(['ar', 'en']),
             'first_seen_at' => now()->subDays($this->faker->numberBetween(0, 30)),
+            'created_at' => $this->faker->dateTimeBetween('-1 month', 'now'),
+            'updated_at' => $this->faker->dateTimeBetween('-1 month', 'now'),
         ];
     }
 }

@@ -21,6 +21,8 @@ class RoutingRuleFactory extends Factory
             'match_category' => $this->faker->randomElement(['general_inquiry','maintenance', 'housekeeping', 'emergency', 'complaint', 'other']),
             'priority_default' => $this->faker->randomElement(['low', 'med', 'high', 'urgent']),
             'is_active' => $this->faker->boolean(80),
+            'created_at' => $this->faker->dateTimeBetween('-1 month', 'now'),
+            'updated_at' => $this->faker->dateTimeBetween('-1 month', 'now'),
         ];
     }
 }

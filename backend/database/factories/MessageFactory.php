@@ -18,6 +18,7 @@ class MessageFactory extends Factory
             'content' => $this->faker->sentence(10),
             'extracted_entities' => null,
             'created_at' => now()->subMinutes($this->faker->numberBetween(1, 180)),
+            'updated_at' => now()->subMinutes($this->faker->numberBetween(1, 180)), 
         ];
     }
 }

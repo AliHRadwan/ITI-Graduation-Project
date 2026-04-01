@@ -19,6 +19,8 @@ class StaffRoleFactory extends Factory
         return [
             // Uses "Job Title" to generate names like "Supervisor", "Associate", etc.
             'name' => fake()->unique()->jobTitle(),
+            'created_at' => $this->faker->dateTimeBetween('-1 month', 'now'),
+            'updated_at' => $this->faker->dateTimeBetween('-1 month', 'now'),
         ];
     }
 }

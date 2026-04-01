@@ -34,6 +34,7 @@ class TicketEventFactory extends Factory
             ]),
             'note' => $this->faker->sentence(),
             'created_at' => $this->faker->dateTimeBetween('-1 month', 'now'),
+            'updated_at' => $this->faker->dateTimeBetween('-1 month', 'now'),
         ];
     }
 }

@@ -20,6 +20,8 @@ class RatingFactory extends Factory
             'ticket_id' => \App\Models\Ticket::factory(),
             'stars' => $this->faker->numberBetween(1, 5),
             'comment' => $this->faker->optional()->sentence(),
+            'created_at' => $this->faker->dateTimeBetween('-1 month', 'now'),
+            'updated_at' => $this->faker->dateTimeBetween('-1 month', 'now'),
         ];
     }
 }

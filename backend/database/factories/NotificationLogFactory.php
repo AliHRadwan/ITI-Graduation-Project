@@ -24,6 +24,8 @@ class NotificationLogFactory extends Factory
             'payload' => $this->faker->text(200),
             'sent_at' => $this->faker->dateTimeBetween('now', '+1 day'),
             'status' => $this->faker->randomElement(['sent', 'failed']),
+            'created_at' => $this->faker->dateTimeBetween('-1 month', 'now'),
+            'updated_at' => $this->faker->dateTimeBetween('-1 month', 'now'),
         ];
     }
 }

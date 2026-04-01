@@ -57,6 +57,8 @@ class ProactiveRuleFactory extends Factory
             'trigger_config' => $config, // Laravel will cast this to JSON automatically if configured in Model
             'message_template' => $template,
             'is_active' => $this->faker->boolean(80), // 80% chance of being true
+            'created_at' => $this->faker->dateTimeBetween('-1 month', 'now'),
+            'updated_at' => $this->faker->dateTimeBetween('-1 month', 'now'),
         ];
     }
 }

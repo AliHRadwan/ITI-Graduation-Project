@@ -28,6 +28,8 @@ class StaffUserFactory extends Factory
             'email' => fake()->unique()->safeEmail(),
             'password' => static::$password ??= Hash::make('password'), // Default password is 'password'
             'is_active' => fake()->boolean(90), // 90% chance of being Active
+            'created_at' => $this->faker->dateTimeBetween('-1 month', 'now'),
+            'updated_at' => $this->faker->dateTimeBetween('-1 month', 'now'),
         ];
     }
     
@@ -39,6 +41,8 @@ class StaffUserFactory extends Factory
         return $this->state(fn (array $attributes) => [
             'email' => 'admin@hotel.com',
             'is_active' => true,
+            'created_at' => $this->faker->dateTimeBetween('-1 month', 'now'),
+            'updated_at' => $this->faker->dateTimeBetween('-1 month', 'now'),
         ]);
     }
 }

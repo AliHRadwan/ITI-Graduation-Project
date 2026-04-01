@@ -24,7 +24,9 @@ class ChannelConfigFactory extends Factory
                 'notifications_enabled' => $this->faker->boolean(),
                 'max_items' => $this->faker->numberBetween(10, 100),
                 'api_key' => $this->faker->uuid(),
-            ]
+            ],
+            'created_at' => $this->faker->dateTimeBetween('-1 month', 'now'),
+            'updated_at' => $this->faker->dateTimeBetween('-1 month', 'now'),
         ];
     }
 }

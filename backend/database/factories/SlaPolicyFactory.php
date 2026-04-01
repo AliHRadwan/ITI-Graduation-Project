@@ -26,6 +26,8 @@ class SlaPolicyFactory extends Factory
                 'days' => ['Friday', 'Saturday'],
             ]),
             'is_active' => $this->faker->boolean(80),
+            'created_at' => $this->faker->dateTimeBetween('-1 month', 'now'),
+            'updated_at' => $this->faker->dateTimeBetween('-1 month', 'now'),
         ];
     }
 }

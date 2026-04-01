@@ -49,6 +49,8 @@ class QrRoomTokenFactory extends Factory
                 'issued_at' => $this->faker->dateTimeBetween('-1 month', '-2 days'),
                 'expires_at' => $this->faker->dateTimeBetween('-2 days', '-1 hour'), // Date in the past
                 'is_active' => false,
+                'created_at' => $this->faker->dateTimeBetween('-1 month', 'now'),
+                'updated_at' => $this->faker->dateTimeBetween('-1 month', 'now'),
             ];
         });
     }

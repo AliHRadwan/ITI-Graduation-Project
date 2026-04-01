@@ -24,6 +24,8 @@ class TicketFactory extends Factory
             'status' => $this->faker->randomElement(['new', 'doing', 'done', 'canceled']),
             'priority' => $this->faker->randomElement(['low', 'med', 'high', 'urgent']),
             'description' => $this->faker->paragraph(),
+            'created_at' => $this->faker->dateTimeBetween('-1 month', 'now'),
+            'updated_at' => $this->faker->dateTimeBetween('-1 month', 'now'),
         ];
     }
 }
